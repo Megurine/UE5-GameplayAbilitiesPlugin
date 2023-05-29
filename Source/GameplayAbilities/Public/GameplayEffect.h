@@ -513,8 +513,8 @@ struct GAMEPLAYABILITIES_API FGameplayModifierInfo
 	FScalableFloat Magnitude;
 
 	/** Magnitude of the modifier */
-	UPROPERTY(EditDefaultsOnly, Category=GameplayModifier)
-	FGameplayEffectModifierMagnitude ModifierMagnitude;
+	UPROPERTY(EditDefaultsOnly, Category = GameplayModifier)
+		FGameplayEffectModifierMagnitude ModifierMagnitude;
 
 	UPROPERTY(EditDefaultsOnly, Category = GameplayModifier, meta = (EditCondition = "ModifierOp==EGameplayModOp::Override", EditConditionHides, ToolTip = "If equal, the last one is taken"))
 		int32 OverridePriority = 0;

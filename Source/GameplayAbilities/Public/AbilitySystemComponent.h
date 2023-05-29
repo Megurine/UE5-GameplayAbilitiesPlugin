@@ -22,6 +22,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "AbilitySystemReplicationProxyInterface.h"
 #include "Net/Core/PushModel/PushModel.h"
+#include "AttributeChangeDatasObject.h"
 #include "AbilitySystemComponent.generated.h"
 
 class AGameplayAbilityTargetActor;
@@ -332,6 +333,9 @@ class GAMEPLAYABILITIES_API UAbilitySystemComponent : public UGameplayTasksCompo
 	/** Create an EffectContext for the owner of this AbilitySystemComponent */
 	UFUNCTION(BlueprintCallable, Category = GameplayEffects)
 	virtual FGameplayEffectContextHandle MakeEffectContext() const;
+
+	UFUNCTION(BlueprintCallable, Category = GameplayEffects)
+	virtual FGameplayEffectContextHandle MakeEffectContextFromInstigator(AActor* Instigator) const;
 
 	/**
 	 * Get the count of the specified source effect on the ability system component. For non-stacking effects, this is the sum of all active instances.
@@ -1741,7 +1745,7 @@ protected:
 	virtual void RemoveGameplayCue_Internal(const FGameplayTag GameplayCueTag, FActiveGameplayCueContainer& GameplayCueContainer);
 
 	/** Actually pushes the final attribute value to the attribute set's property. Should not be called by outside code since this does not go through the attribute aggregator system. */
-	virtual void SetNumericAttribute_Internal(const FGameplayAttribute& Attribute, float& NewFloatValue);
+	virtual void SetNumericAttribute_Internal(const FGameplayAttribute &Attribute, float& NewFloatValue);
 
 	bool HasNetworkAuthorityToApplyGameplayEffect(FPredictionKey PredictionKey) const;
 
@@ -1862,4 +1866,10 @@ protected:
 
 	TArray<FAbilityListLockActiveChange*> AbilityListLockActiveChanges;
 	
+public : 
+
+	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator);
+	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator);
+
+	UAttributeChangeDatasObject* LastAttributeChangeDatasObject = nullptr;
 };

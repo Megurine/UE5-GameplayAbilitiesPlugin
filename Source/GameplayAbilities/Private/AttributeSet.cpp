@@ -45,7 +45,6 @@ void FGameplayAttributeData::SetBaseValue(float NewValue)
 	BaseValue = NewValue;
 }
 
-
 FGameplayAttribute::FGameplayAttribute(FProperty *NewProperty)
 {
 	// we allow numeric properties and gameplay attribute data properties for now
@@ -339,6 +338,7 @@ void FGameplayAttribute::GetAllAttributeProperties(TArray<FProperty*>& OutProper
 #endif
 	}
 }
+
 
 UAttributeSet::UAttributeSet(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

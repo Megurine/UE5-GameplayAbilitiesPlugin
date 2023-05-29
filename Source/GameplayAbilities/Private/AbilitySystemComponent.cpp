@@ -288,9 +288,7 @@ bool UAbilitySystemComponent::HasNetworkAuthorityToApplyGameplayEffect(FPredicti
 void UAbilitySystemComponent::SetNumericAttributeBase(const FGameplayAttribute &Attribute, float NewFloatValue)
 {
 	// Go through our active gameplay effects container so that aggregation/mods are handled properly.
-	UE_LOG(LogTemp, Log, TEXT("PKM_GAS SetNumericAttributeBase : %f"), NewFloatValue);
 	ActiveGameplayEffects.SetAttributeBaseValue(Attribute, NewFloatValue);
-	
 	bIsNetDirty = true;
 }
 
@@ -382,6 +380,13 @@ FGameplayEffectContextHandle UAbilitySystemComponent::MakeEffectContext() const
 	check(AbilityActorInfo.IsValid());
 	
 	Context.AddInstigator(AbilityActorInfo->OwnerActor.Get(), AbilityActorInfo->AvatarActor.Get());
+	return Context;
+}
+
+FGameplayEffectContextHandle UAbilitySystemComponent::MakeEffectContextFromInstigator(AActor* Instigator) const
+{
+	FGameplayEffectContextHandle Context = FGameplayEffectContextHandle(UAbilitySystemGlobals::Get().AllocGameplayEffectContext());
+	Context.AddInstigator(Instigator, Instigator);
 	return Context;
 }
 
@@ -2940,3 +2945,20 @@ const FMinimalReplicationTagCountMap& UAbilitySystemComponent::GetReplicatedLoos
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 #undef LOCTEXT_NAMESPACE
+
+void UAbilitySystemComponent::GenerateLastAttributeChangeDatas(AActor* Instigator)
+{
+	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, UAttributeChangeDatasObject::StaticClass());
+	LastAttributeChangeDatasObject->Instigator = Instigator;
+}
+
+void UAbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator)
+{
+	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, UAttributeChangeDatasObject::StaticClass());
+	FGameplayEffectContextHandle SpecContext = Spec.GetContext();
+	LastAttributeChangeDatasObject->Instigator = SpecContext.GetInstigator(); //Can be nullptr
+	if (!LastAttributeChangeDatasObject->Instigator)
+	{
+		LastAttributeChangeDatasObject->Instigator = Instigator;
+	}
+}

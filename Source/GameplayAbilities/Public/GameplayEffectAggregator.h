@@ -58,9 +58,9 @@ struct GAMEPLAYABILITIES_API FAggregatorMod
 
 	FActiveGameplayEffectHandle ActiveHandle;	// Handle of the active GameplayEffect we are tied to (if any)
 	bool IsPredicted;
-	
-	int32 OverridePriority;
 
+	int32 OverridePriority;
+	
 	bool Qualifies() const { return IsQualified; }
 
 	/** Called to update the Qualifies bool */

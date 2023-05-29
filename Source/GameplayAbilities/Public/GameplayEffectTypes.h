@@ -12,6 +12,7 @@
 #include "AttributeSet.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "AbilitySystemLog.h"
+#include "AttributeChangeDatasObject.h"
 #include "GameplayEffectTypes.generated.h"
 
 #define SKILL_SYSTEM_AGGREGATOR_DEBUG 1
@@ -1083,12 +1084,14 @@ struct FOnAttributeChangeData
 		: NewValue(0.0f)
 		, OldValue(0.0f)
 		, GEModData(nullptr)
+		, ChangeDatas(nullptr)
 	{ }
 
 	FGameplayAttribute Attribute;
 
 	float	NewValue;
 	float	OldValue;
+	UAttributeChangeDatasObject* ChangeDatas = nullptr;
 	const FGameplayEffectModCallbackData* GEModData;
 };
 

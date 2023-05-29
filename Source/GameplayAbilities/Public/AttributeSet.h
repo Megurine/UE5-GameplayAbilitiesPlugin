@@ -109,7 +109,7 @@ struct GAMEPLAYABILITIES_API FGameplayAttribute
 	static bool IsGameplayAttributeDataProperty(const FProperty* Property);
 
 	/** Modifies the current value of an attribute, will not modify base value if that is supported */
-	void SetNumericValueChecked(float& NewValue, class UAttributeSet* Dest) const;
+	virtual void SetNumericValueChecked(float& NewValue, class UAttributeSet* Dest) const;
 
 	/** Returns the current value of an attribute */
 	float GetNumericValue(const UAttributeSet* Src) const;
@@ -158,6 +158,7 @@ private:
 
 	UPROPERTY(Category = GameplayAttribute, VisibleAnywhere)
 	UStruct* AttributeOwner;
+		
 };
 
 #if WITH_EDITORONLY_DATA
