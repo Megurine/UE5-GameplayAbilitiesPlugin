@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "PKM_TimelineGameplayEffectComp.generated.h"
 
 class UPKM_GameplayEffectActorComponent;

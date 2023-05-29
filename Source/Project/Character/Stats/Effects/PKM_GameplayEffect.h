@@ -20,6 +20,9 @@ public :
 
 	void Init(UPKM_AbilitySystemComponent* AbilitySystemComp, FActiveGameplayEffectHandle handle) const;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 		TSoftClassPtr<UPKM_GameplayEffectActorComponent> GameplayEffectComponentClass = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
+		TSoftObjectPtr<UTexture> Icon = nullptr;
 };

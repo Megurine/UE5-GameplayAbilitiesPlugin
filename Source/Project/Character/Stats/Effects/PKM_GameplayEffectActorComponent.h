@@ -9,8 +9,6 @@
 #include "GameplayAbilitieTest/PKM_Types.h"
 #include "PKM_GameplayEffectActorComponent.generated.h"
 
-
-
 class UPKM_AbilitySystemComponent;
 class UPKM_TimelineGameplayEffectComp;
 
@@ -49,7 +47,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles|Start")
 		FFXAttachment ParticleSettingsStart = FFXAttachment();
-
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles|Start")
 		float DeactiveParticleDelayStartOnEnd = 0.0f;
 
@@ -94,7 +92,7 @@ public:
 		float RemainingTime = 0.0f;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Time")
-		float GetRemaininTimePercent() const;
+		float GetRemaininTimePercent() const;	
 
 	UPROPERTY(VisibleDefaultsOnly, Category = "Time")
 		FString TimelineWarning = "Don't forget to use an EventTick()\nif you want your TimelineGameplayEffectComp\nto to work properly.\n(You can leave it empty)";

@@ -68,7 +68,7 @@ void UPKM_AbilitySystemComponent::SetNumericAttribute_Internal(const FGameplayAt
 void UPKM_AbilitySystemComponent::OnPeriodicGameplayEffectExecuteOnTarget(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecExecuted, FActiveGameplayEffectHandle ActiveHandle)
 {
 	Super::OnPeriodicGameplayEffectExecuteOnTarget(Target, SpecExecuted, ActiveHandle);
-	
+
 	uint32 handleId = GetTypeHash(ActiveHandle);
 	if (handleId != -1)
 	{
@@ -185,7 +185,7 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValueLimitWithMultiplyValueBef
 	else
 	{
 		//Error
-		SetAttributeBaseValue(attribute, value * multiplierValueBefore, type, clamp);
+		SetAttributeBaseValue(attribute, value * multiplierValueBefore, type, clamp, Instigator);
 	}
 }
 
@@ -382,7 +382,7 @@ FActiveGameplayEffectHandle UPKM_AbilitySystemComponent::ApplyGameplayEffectToTa
 void UPKM_AbilitySystemComponent::BindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate)
 {
 	FOnGameplayAttributeValueChange& AttributeValueChange = GetGameplayAttributeValueChangeDelegate(GetAttributeByEnum(attribute, type));
-	if (!AttributeValueChange.IsBoundToObject(this))
+	if(!AttributeValueChange.IsBoundToObject(this))
 	{
 		AttributeValueChange.AddUObject(this, &UPKM_AbilitySystemComponent::OnAttributeValueChange);
 	}
@@ -413,11 +413,10 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 			{
 				if (attributeCouple->type == EPKM_AttributesType::VALUE)
 				{
-					//newValue = ClampAttributeValue(attributeCouple->attribute, attributeCouple->type, newValue);//MEGU
+					//newValue = ClampAttributeValue(attributeCouple->attribute, attributeCouple->type, newValue);
 					bool found;
 					newValue = GetGameplayAttributeValue(GetAttributeByEnum(attributeCouple->attribute, EPKM_AttributesType::VALUE), found);
 					//oldValue = ClampAttributeValue(attributeCouple->attribute, oldValue);
-
 				}
 			}
 			if (newValue != oldValue) //Optimization - Maybe remove this condition ?
@@ -653,7 +652,7 @@ void UPKM_AbilitySystemComponent::BindFunctionToGameplayTagEvent(FOnGameplayTagC
 	FRegisterGameplayTagEventStruct RegisterGameplayTagEventStruct = FRegisterGameplayTagEventStruct(Tag, eventType);
 
 	bool contains = OnGameplayTagEventDelegateHandles.Contains(RegisterGameplayTagEventStruct);
-	if (!contains)
+	if(!contains)
 	{
 		//UE_LOG(LogTemp, Log, TEXT("PKM_GAS BindFunctionToGameplayTagEvent RegisterGameplayTagEvent"));
 		FDelegateHandle DelegateHandle;
@@ -853,7 +852,7 @@ void UPKM_AbilitySystemComponent::ComputeTimelineGameplayEffectCompColors()
 			colorSet = true;
 		}
 	}
-	if (!colorSet)//if no color set, check if there is color at previous tick, if there is then reset the color
+	if(!colorSet)//if no color set, check if there is color at previous tick, if there is then reset the color
 	{
 		if (TimelineGameplayEffectCompColorCountCached > 0)
 		{

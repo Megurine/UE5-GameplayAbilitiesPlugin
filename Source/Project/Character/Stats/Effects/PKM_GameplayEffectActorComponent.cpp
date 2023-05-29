@@ -6,6 +6,7 @@
 #include "GameplayAbilitieTest/Character/Stats/Effects/PKM_TimelineGameplayEffectComp.h"
 
 
+
 UPKM_GameplayEffectActorComponent::UPKM_GameplayEffectActorComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;

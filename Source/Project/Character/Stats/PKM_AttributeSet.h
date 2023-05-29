@@ -7,7 +7,6 @@
 #include "GameplayAbilitieTest/PKM_Types.h"
 #include "PKM_AttributeSet.generated.h"
 
-
 UENUM(BlueprintType)
 enum class EPKM_Attributes : uint8
 {
@@ -94,8 +93,6 @@ public:
 	const FGameplayAttribute GetAttributeByEnum(EPKM_Attributes attribute, EPKM_AttributesType type = EPKM_AttributesType::VALUE) const;
 
 	virtual void InitFromMetaDataTable(const UDataTable* DataTable) override;
-
-	//virtual void SetNumericValueChecked(float& NewValue, class UAttributeSet* Dest) const override;
 
 	TMap<FString, FGameplayAttributeCouple> AttributeCouple;
 

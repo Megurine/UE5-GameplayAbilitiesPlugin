@@ -4,7 +4,6 @@
 #include "PKM_TimelineGameplayEffectComp.h"
 #include "GameplayAbilitieTest/Character/Stats/PKM_AbilitySystemComponent.h"
 #include "GameplayAbilitieTest/Character/Stats/Effects/PKM_GameplayEffectActorComponent.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/KismetMaterialLibrary.h"
 
 UPKM_TimelineGameplayEffectComp::UPKM_TimelineGameplayEffectComp()
@@ -45,7 +44,6 @@ void UPKM_TimelineGameplayEffectComp::Init(UPKM_GameplayEffectActorComponent* _G
 						blendValue = 1.0f;
 						UpdatePostProcessMaterial();
 					}
-
 					OwnerCameraForPostProcessMaterial->PostProcessSettings.WeightedBlendables.Array.Add(FWeightedBlendable(blendValue, PostProcessMaterialOnOwnerInstance));
 				}
 			}
