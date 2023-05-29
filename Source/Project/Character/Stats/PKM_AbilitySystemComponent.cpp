@@ -110,12 +110,12 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValue(EPKM_Attributes attribut
 
 		if (type != EPKM_AttributesType::VALUE) //Update and clamp value if we changed min or max
 		{
-			SetAttributeBaseValue(attribute, GetAttributeCurrentValue(attribute, EPKM_AttributesType::VALUE), EPKM_AttributesType::VALUE, true);
+			SetAttributeBaseValue(attribute, GetAttributeCurrentValue(attribute, EPKM_AttributesType::VALUE), EPKM_AttributesType::VALUE, true, Instigator);
 		}
 	}
 }
 
-void UPKM_AbilitySystemComponent::SetAttributeBaseValues(EPKM_Attributes attribute, float value, float min, float max, bool clampValue, bool TriggerOnChangeIfEqualToBeforeValue, AActor* Instigator)
+void UPKM_AbilitySystemComponent::SetAttributeBaseValues(EPKM_Attributes attribute, float value, float min, float max, AActor* Instigator, bool clampValue, bool TriggerOnChangeIfEqualToBeforeValue)
 {
 	float beforeValue = -1.0f;
 	if (TriggerOnChangeIfEqualToBeforeValue)
@@ -147,7 +147,7 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValues(EPKM_Attributes attribu
 	}
 }
 
-void UPKM_AbilitySystemComponent::SetAttributeBaseValueLimitWithMultiplyValueBefore(EPKM_Attributes attribute, float value, EPKM_AttributesType type, bool clamp, float multiplierValueBefore, AActor* Instigator)
+void UPKM_AbilitySystemComponent::SetAttributeBaseValueLimitWithMultiplyValueBefore(EPKM_Attributes attribute, float value, EPKM_AttributesType type, AActor* Instigator, bool clamp, float multiplierValueBefore)
 {
 	if (type == EPKM_AttributesType::MINIMUM || type == EPKM_AttributesType::MAXIMUM)
 	{
@@ -207,7 +207,7 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValueToMin(EPKM_Attributes att
 	}
 }
 
-void UPKM_AbilitySystemComponent::AddAttributeBaseValue(EPKM_Attributes attribute, float valueToAdd, EPKM_AttributesType type, EPKM_AddToAttributeType AddToAttributeType, bool clamp, AActor* Instigator)
+void UPKM_AbilitySystemComponent::AddAttributeBaseValue(EPKM_Attributes attribute, float valueToAdd, EPKM_AttributesType type, AActor* Instigator, EPKM_AddToAttributeType AddToAttributeType, bool clamp)
 {
 	float currentValue;
 	if (AddToAttributeType == EPKM_AddToAttributeType::TOBASEVALUE)

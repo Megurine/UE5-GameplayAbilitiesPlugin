@@ -150,28 +150,28 @@ public :
 	virtual void OnPeriodicGameplayEffectExecuteOnTarget(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecExecuted, FActiveGameplayEffectHandle ActiveHandle) override;
 
 	UFUNCTION(BlueprintCallable)
-		const FGameplayAttribute GetAttributeByEnum(EPKM_Attributes attribute, EPKM_AttributesType type = EPKM_AttributesType::VALUE) const;
+		const FGameplayAttribute GetAttributeByEnum(EPKM_Attributes attribute, EPKM_AttributesType type) const;
 
 	UFUNCTION(BlueprintCallable)
-		void SetAttributeBaseValue(EPKM_Attributes attribute, float value, EPKM_AttributesType type = EPKM_AttributesType::VALUE, bool clamp = true, AActor* Instigator = nullptr);
+		void SetAttributeBaseValue(EPKM_Attributes attribute, float value, EPKM_AttributesType type, bool clamp, AActor* Instigator);
 
 	UFUNCTION(BlueprintCallable)
-		void SetAttributeBaseValues(EPKM_Attributes attribute, float value, float min, float max, bool clampValue = true, bool TriggerOnChangeIfEqualToBeforeValue = true, AActor* Instigator = nullptr);
+		void SetAttributeBaseValues(EPKM_Attributes attribute, float value, float min, float max, AActor* Instigator, bool clampValue = true, bool TriggerOnChangeIfEqualToBeforeValue = true);
 
 	UFUNCTION(BlueprintCallable)
-		void SetAttributeBaseValueLimitWithMultiplyValueBefore(EPKM_Attributes attribute, float value, EPKM_AttributesType type, bool clamp = true, float multiplierValueBefore = 1.0f, AActor* Instigator = nullptr);
+		void SetAttributeBaseValueLimitWithMultiplyValueBefore(EPKM_Attributes attribute, float value, EPKM_AttributesType type, AActor* Instigator, bool clamp = true, float multiplierValueBefore = 1.0f);
 
 	UFUNCTION(BlueprintCallable)
-		void SetAttributeBaseValueToMax(EPKM_Attributes attribute, AActor* Instigator = nullptr);
+		void SetAttributeBaseValueToMax(EPKM_Attributes attribute, AActor* Instigator);
 
 	UFUNCTION(BlueprintCallable)
-		void SetAttributeBaseValueToMin(EPKM_Attributes attribute, AActor* Instigator = nullptr);
+		void SetAttributeBaseValueToMin(EPKM_Attributes attribute, AActor* Instigator);
 
 	UFUNCTION(BlueprintCallable)
-		void AddAttributeBaseValue(EPKM_Attributes attribute, float valueToAdd, EPKM_AttributesType type = EPKM_AttributesType::VALUE, EPKM_AddToAttributeType AddToAttributeType = EPKM_AddToAttributeType::TOBASEVALUE, bool clamp = true, AActor* Instigator = nullptr);
+		void AddAttributeBaseValue(EPKM_Attributes attribute, float valueToAdd, EPKM_AttributesType type, AActor* Instigator, EPKM_AddToAttributeType AddToAttributeType = EPKM_AddToAttributeType::TOBASEVALUE, bool clamp = true);
 
 	UFUNCTION(BlueprintCallable)
-		float GetAttributeCurrentValue(EPKM_Attributes attribute, EPKM_AttributesType type = EPKM_AttributesType::VALUE) const;
+		float GetAttributeCurrentValue(EPKM_Attributes attribute, EPKM_AttributesType type) const;
 
 	UFUNCTION(BlueprintCallable)
 		float GetAttributeCurrentValuePercent(EPKM_Attributes attribute) const;
