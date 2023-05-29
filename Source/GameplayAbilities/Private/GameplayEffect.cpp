@@ -2230,18 +2230,12 @@ void FActiveGameplayEffectsContainer::OnAttributeAggregatorDirty(FAggregator* Ag
 		EvaluationParameters.IncludePredictiveMods = true;
 	}
 
-	TMap<EGameplayModEvaluationChannel, const TArray<FAggregatorMod>*> OutMods;
-	Aggregator->GetAllAggregatorMods(OutMods);
-
 	float NewValue = Aggregator->Evaluate(EvaluationParameters);
 
 	if (EvaluationParameters.IncludePredictiveMods)
 	{
 		ABILITY_LOG(Log, TEXT("After Prediction, FinalValue: %.2f"), NewValue);
 	}
-
-	//Aggregator->EvaluationMetaData
-	//Aggregator->OnDirty.GetInvocationList();
 
 	InternalUpdateNumericalAttribute(Attribute, NewValue, nullptr, bFromRecursiveCall);
 }
@@ -2653,7 +2647,6 @@ void FActiveGameplayEffectsContainer::InternalUpdateNumericalAttribute(FGameplay
 			CallbackData.GEModData = DataToShare;
 			CallbackData.ChangeDatas = Owner->LastAttributeChangeDatasObject;
 
-			//MEGU
 			NewDelegate->Broadcast(CallbackData);
 		}
 	}
@@ -2704,7 +2697,7 @@ void FActiveGameplayEffectsContainer::SetAttributeBaseValue(FGameplayAttribute A
 	else
 	{
 		OldBaseValue = Owner->GetNumericAttribute(Attribute);
-		InternalUpdateNumericalAttribute(Attribute, NewBaseValue, nullptr);//MEGU
+		InternalUpdateNumericalAttribute(Attribute, NewBaseValue, nullptr);
 		bBaseValueSet = true;
 	}
 
