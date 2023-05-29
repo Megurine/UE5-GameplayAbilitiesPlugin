@@ -59,6 +59,8 @@ struct GAMEPLAYABILITIES_API FAggregatorMod
 	FActiveGameplayEffectHandle ActiveHandle;	// Handle of the active GameplayEffect we are tied to (if any)
 	bool IsPredicted;
 	
+	int32 OverridePriority;
+
 	bool Qualifies() const { return IsQualified; }
 
 	/** Called to update the Qualifies bool */
@@ -118,7 +120,7 @@ struct GAMEPLAYABILITIES_API FAggregatorModChannel
 	 * @param bIsPredicted			Whether the mod is predicted or not
 	 * @param ActiveHandle			Handle of the active gameplay effect that's applying the mod
 	 */
-	void AddMod(float EvaluatedMagnitude, TEnumAsByte<EGameplayModOp::Type> ModOp, const FGameplayTagRequirements* SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool bIsPredicted, const FActiveGameplayEffectHandle& ActiveHandle);
+	void AddMod(float EvaluatedMagnitude, TEnumAsByte<EGameplayModOp::Type> ModOp, const FGameplayTagRequirements* SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool bIsPredicted, const FActiveGameplayEffectHandle& ActiveHandle, int32 OverridePriority);
 	
 	/**
 	 * Remove all mods from the channel that match the specified gameplay effect handle
@@ -291,7 +293,7 @@ struct GAMEPLAYABILITIES_API FAggregator : public TSharedFromThis<FAggregator>
 	void ExecModOnBaseValue(TEnumAsByte<EGameplayModOp::Type> ModifierOp, float EvaluatedMagnitude);
 	static float StaticExecModOnBaseValue(float BaseValue, TEnumAsByte<EGameplayModOp::Type> ModifierOp, float EvaluatedMagnitude);
 
-	void AddAggregatorMod(float EvaluatedData, TEnumAsByte<EGameplayModOp::Type> ModifierOp, EGameplayModEvaluationChannel ModifierChannel, const FGameplayTagRequirements*	SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool IsPredicted, FActiveGameplayEffectHandle ActiveHandle = FActiveGameplayEffectHandle() );
+	void AddAggregatorMod(float EvaluatedData, TEnumAsByte<EGameplayModOp::Type> ModifierOp, EGameplayModEvaluationChannel ModifierChannel, const FGameplayTagRequirements*	SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool IsPredicted, FActiveGameplayEffectHandle ActiveHandle = FActiveGameplayEffectHandle(), int32 OverridePriority = 0);
 
 	/** Removes all mods for the passed in handle and marks this as dirty to recalculate the aggregator */
 	void RemoveAggregatorMod(FActiveGameplayEffectHandle ActiveHandle);

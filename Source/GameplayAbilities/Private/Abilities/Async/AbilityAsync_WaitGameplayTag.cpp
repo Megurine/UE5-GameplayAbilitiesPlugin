@@ -29,7 +29,7 @@ void UAbilityAsync_WaitGameplayTag::Activate()
 	}
 }
 
-void UAbilityAsync_WaitGameplayTag::GameplayTagCallback(const FGameplayTag InTag, int32 NewCount)
+void UAbilityAsync_WaitGameplayTag::GameplayTagCallback(const FGameplayTag InTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded)
 {
 	if (NewCount == TargetCount)
 	{

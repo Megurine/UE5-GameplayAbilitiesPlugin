@@ -288,7 +288,9 @@ bool UAbilitySystemComponent::HasNetworkAuthorityToApplyGameplayEffect(FPredicti
 void UAbilitySystemComponent::SetNumericAttributeBase(const FGameplayAttribute &Attribute, float NewFloatValue)
 {
 	// Go through our active gameplay effects container so that aggregation/mods are handled properly.
+	UE_LOG(LogTemp, Log, TEXT("PKM_GAS SetNumericAttributeBase : %f"), NewFloatValue);
 	ActiveGameplayEffects.SetAttributeBaseValue(Attribute, NewFloatValue);
+	
 	bIsNetDirty = true;
 }
 
@@ -595,7 +597,7 @@ FDelegateHandle UAbilitySystemComponent::RegisterAndCallGameplayTagEvent(FGamepl
 	const int32 TagCount = GetTagCount(Tag);
 	if (TagCount > 0)
 	{
-		Delegate.Execute(Tag, TagCount);
+		Delegate.Execute(Tag, TagCount, Tag, true);
 	}
 
 	return DelegateHandle;

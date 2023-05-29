@@ -516,6 +516,9 @@ struct GAMEPLAYABILITIES_API FGameplayModifierInfo
 	UPROPERTY(EditDefaultsOnly, Category=GameplayModifier)
 	FGameplayEffectModifierMagnitude ModifierMagnitude;
 
+	UPROPERTY(EditDefaultsOnly, Category = GameplayModifier, meta = (EditCondition = "ModifierOp==EGameplayModOp::Override", EditConditionHides, ToolTip = "If equal, the last one is taken"))
+		int32 OverridePriority = 0;
+
 	/** Evaluation channel settings of the modifier */
 	UPROPERTY(EditDefaultsOnly, Category=GameplayModifier)
 	FGameplayModEvaluationChannelSettings EvaluationChannelSettings;
@@ -1721,7 +1724,7 @@ struct GAMEPLAYABILITIES_API FActiveGameplayEffectsContainer : public FFastArray
 
 	FOnGameplayAttributeValueChange& GetGameplayAttributeValueChangeDelegate(FGameplayAttribute Attribute);
 
-	void OnOwnerTagChange(FGameplayTag TagChange, int32 NewCount);
+	void OnOwnerTagChange(FGameplayTag TagChange, int32 NewCount, FGameplayTag TriggerTagChange, bool TagAdded);
 
 	bool HasApplicationImmunityToSpec(const FGameplayEffectSpec& SpecToApply, const FActiveGameplayEffect*& OutGEThatProvidedImmunity) const;
 

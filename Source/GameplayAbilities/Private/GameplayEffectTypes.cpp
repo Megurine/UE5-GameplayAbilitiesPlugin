@@ -386,7 +386,7 @@ void FGameplayTagCountContainer::Notify_StackCountChange(const FGameplayTag& Tag
 		if (DelegateInfo)
 		{
 			int32 TagCount = GameplayTagCountMap.FindOrAdd(CurTag);
-			DelegateInfo->OnAnyChange.Broadcast(CurTag, TagCount);
+			DelegateInfo->OnAnyChange.Broadcast(CurTag, TagCount, Tag, true);
 		}
 	}
 }
@@ -470,15 +470,17 @@ bool FGameplayTagCountContainer::GatherTagChangeDelegates(const FGameplayTag& Ta
 		int32 NewTagCount = FMath::Max(OldCount + CountDelta, 0);
 		TagCountRef = NewTagCount;
 
+		bool added = CountDelta > 0;
+
 		// If a significant change (new addition or total removal) occurred, trigger related delegates
 		const bool SignificantChange = (OldCount == 0 || NewTagCount == 0);
 		CreatedSignificantChange |= SignificantChange;
 		if (SignificantChange)
 		{
 			TagChangeDelegates.AddDefaulted();
-			TagChangeDelegates.Last().BindLambda([Delegate = OnAnyTagChangeDelegate, CurTag, NewTagCount]()
+			TagChangeDelegates.Last().BindLambda([Delegate = OnAnyTagChangeDelegate, CurTag, NewTagCount, Tag, added]()
 			{
-				Delegate.Broadcast(CurTag, NewTagCount);
+				Delegate.Broadcast(CurTag, NewTagCount, Tag, added);
 			});
 		}
 
@@ -486,17 +488,17 @@ bool FGameplayTagCountContainer::GatherTagChangeDelegates(const FGameplayTag& Ta
 		if (DelegateInfo)
 		{
 			TagChangeDelegates.AddDefaulted();
-			TagChangeDelegates.Last().BindLambda([Delegate = DelegateInfo->OnAnyChange, CurTag, NewTagCount]()
+			TagChangeDelegates.Last().BindLambda([Delegate = DelegateInfo->OnAnyChange, CurTag, NewTagCount, Tag, added]()
 			{
-				Delegate.Broadcast(CurTag, NewTagCount);
+				Delegate.Broadcast(CurTag, NewTagCount, Tag, added);
 			});
 
 			if (SignificantChange)
 			{
 				TagChangeDelegates.AddDefaulted();
-				TagChangeDelegates.Last().BindLambda([Delegate = DelegateInfo->OnNewOrRemove, CurTag, NewTagCount]()
+				TagChangeDelegates.Last().BindLambda([Delegate = DelegateInfo->OnNewOrRemove, CurTag, NewTagCount, Tag, added]()
 				{
-					Delegate.Broadcast(CurTag, NewTagCount);
+					Delegate.Broadcast(CurTag, NewTagCount, Tag, added);
 				});
 			}
 		}
@@ -662,7 +664,7 @@ void FGameplayTagBlueprintPropertyMap::Unregister()
 	CachedASC = nullptr;
 }
 
-void FGameplayTagBlueprintPropertyMap::GameplayTagEventCallback(const FGameplayTag Tag, int32 NewCount, TWeakObjectPtr<UObject> RegisteredOwner)
+void FGameplayTagBlueprintPropertyMap::GameplayTagEventCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, TWeakObjectPtr<UObject> RegisteredOwner)
 {
 	// If the index and serial don't match with registered owner, the memory might be trashed so abort
 	if (!ensure(RegisteredOwner.HasSameIndexAndSerialNumber(CachedOwner)))

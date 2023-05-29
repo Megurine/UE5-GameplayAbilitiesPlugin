@@ -74,7 +74,7 @@ class GAMEPLAYABILITIES_API UGameplayTagReponseTable : public UDataAsset
 protected:
 
 	UFUNCTION()
-	void TagResponseEvent(const FGameplayTag Tag, int32 NewCount, UAbilitySystemComponent* ASC, int32 idx);
+	void TagResponseEvent(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, UAbilitySystemComponent* ASC, int32 idx);
 	
 	/** Temporary structs to avoid extra heap allocations every time we recalculate tag count */
 	mutable FGameplayEffectQuery Query;

@@ -20,7 +20,7 @@ protected:
 	virtual void Activate() override;
 	virtual void EndAction() override;
 
-	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount);
+	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded);
 	virtual void BroadcastDelegate();
 
 	int32 TargetCount = -1;

@@ -26,7 +26,7 @@ class GAMEPLAYABILITIES_API UAbilityTask_WaitGameplayTagAdded : public UAbilityT
 
 	virtual void Activate() override;
 
-	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount) override;
+	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded) override;
 };
 
 UCLASS()
@@ -46,5 +46,5 @@ class GAMEPLAYABILITIES_API UAbilityTask_WaitGameplayTagRemoved : public UAbilit
 
 	virtual void Activate() override;
 
-	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount) override;
+	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded) override;
 };

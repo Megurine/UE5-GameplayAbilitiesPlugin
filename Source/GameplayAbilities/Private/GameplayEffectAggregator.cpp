@@ -56,12 +56,32 @@ void FAggregatorMod::UpdateQualifies(const FAggregatorEvaluateParameters& Parame
 
 float FAggregatorModChannel::EvaluateWithBase(float InlineBaseValue, const FAggregatorEvaluateParameters& Parameters) const
 {
-	for (const FAggregatorMod& Mod : Mods[EGameplayModOp::Override])
+	/*for (const FAggregatorMod& Mod : Mods[EGameplayModOp::Override])
 	{
 		if (Mod.Qualifies())
 		{
 			return Mod.EvaluatedMagnitude;
 		}
+	}*/
+
+	int32 bestOverridePriority = -1;
+	float bestOverrideEvaluatedMagnitude = 0.0f;
+	int32 numModsOverride = Mods[EGameplayModOp::Override].Num();
+	for (size_t i = 0; i < numModsOverride; i++)
+	{
+		const FAggregatorMod& Mod = Mods[EGameplayModOp::Override][i];
+		if (Mod.Qualifies())
+		{
+			if (Mod.OverridePriority >= bestOverridePriority)
+			{
+				bestOverridePriority = Mod.OverridePriority;
+				bestOverrideEvaluatedMagnitude = Mod.EvaluatedMagnitude;
+			}
+		}
+	}
+	if (bestOverridePriority > -1)
+	{
+		return bestOverrideEvaluatedMagnitude;
 	}
 
 	float Additive = SumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
@@ -109,7 +129,7 @@ bool FAggregatorModChannel::ReverseEvaluate(float FinalValue, const FAggregatorE
 	return true;
 }
 
-void FAggregatorModChannel::AddMod(float EvaluatedMagnitude, TEnumAsByte<EGameplayModOp::Type> ModOp, const FGameplayTagRequirements* SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool bIsPredicted, const FActiveGameplayEffectHandle& ActiveHandle)
+void FAggregatorModChannel::AddMod(float EvaluatedMagnitude, TEnumAsByte<EGameplayModOp::Type> ModOp, const FGameplayTagRequirements* SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool bIsPredicted, const FActiveGameplayEffectHandle& ActiveHandle, int32 OverridePriority)
 {
 	TArray<FAggregatorMod>& ModList = Mods[ModOp];
 
@@ -122,6 +142,7 @@ void FAggregatorModChannel::AddMod(float EvaluatedMagnitude, TEnumAsByte<EGamepl
 	NewMod.StackCount = 0;
 	NewMod.ActiveHandle = ActiveHandle;
 	NewMod.IsPredicted = bIsPredicted;
+	NewMod.OverridePriority = OverridePriority;
 }
 
 void FAggregatorModChannel::RemoveModsWithActiveHandle(const FActiveGameplayEffectHandle& Handle)
@@ -459,10 +480,10 @@ void FAggregator::ExecModOnBaseValue(TEnumAsByte<EGameplayModOp::Type> ModifierO
 	BroadcastOnDirty();
 }
 
-void FAggregator::AddAggregatorMod(float EvaluatedMagnitude, TEnumAsByte<EGameplayModOp::Type> ModifierOp, EGameplayModEvaluationChannel ModifierChannel, const FGameplayTagRequirements* SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool IsPredicted, FActiveGameplayEffectHandle ActiveHandle)
+void FAggregator::AddAggregatorMod(float EvaluatedMagnitude, TEnumAsByte<EGameplayModOp::Type> ModifierOp, EGameplayModEvaluationChannel ModifierChannel, const FGameplayTagRequirements* SourceTagReqs, const FGameplayTagRequirements* TargetTagReqs, bool IsPredicted, FActiveGameplayEffectHandle ActiveHandle, int32 OverridePriority)
 {
 	FAggregatorModChannel& ModChannelToAddTo = ModChannels.FindOrAddModChannel(ModifierChannel);
-	ModChannelToAddTo.AddMod(EvaluatedMagnitude, ModifierOp, SourceTagReqs, TargetTagReqs, IsPredicted, ActiveHandle);
+	ModChannelToAddTo.AddMod(EvaluatedMagnitude, ModifierOp, SourceTagReqs, TargetTagReqs, IsPredicted, ActiveHandle, OverridePriority);
 
 	BroadcastOnDirty();
 }
@@ -487,7 +508,7 @@ void FAggregator::UpdateAggregatorMod(FActiveGameplayEffectHandle ActiveHandle, 
 		if (ModDef.Attribute == Attribute)
 		{
 			FAggregatorModChannel& ModChannel = ModChannels.FindOrAddModChannel(ModDef.EvaluationChannelSettings.GetEvaluationChannel());
-			ModChannel.AddMod(Spec.GetModifierMagnitude(ModIdx, true), ModDef.ModifierOp, &ModDef.SourceTags, &ModDef.TargetTags, bWasLocallyGenerated, InHandle);
+			ModChannel.AddMod(Spec.GetModifierMagnitude(ModIdx, true), ModDef.ModifierOp, &ModDef.SourceTags, &ModDef.TargetTags, bWasLocallyGenerated, InHandle, ModDef.OverridePriority);
 		}
 	}
 

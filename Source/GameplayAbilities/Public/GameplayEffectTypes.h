@@ -1055,7 +1055,7 @@ namespace EGameplayCueEvent
 DECLARE_DELEGATE_OneParam(FOnGameplayAttributeEffectExecuted, struct FGameplayModifierEvaluatedData&);
 DECLARE_DELEGATE(FDeferredTagChangeDelegate);
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnGameplayEffectTagCountChanged, const FGameplayTag, int32);
+DECLARE_MULTICAST_DELEGATE_FourParams(FOnGameplayEffectTagCountChanged, const FGameplayTag, int32, const FGameplayTag, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnGivenActiveGameplayEffectRemoved, const FActiveGameplayEffect&);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnActiveGameplayEffectRemoved_Info, const FGameplayEffectRemovalInfo&);
@@ -1448,7 +1448,7 @@ protected:
 
 	void Unregister();
 
-	void GameplayTagEventCallback(const FGameplayTag Tag, int32 NewCount, TWeakObjectPtr<UObject> RegisteredOwner);
+	void GameplayTagEventCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, TWeakObjectPtr<UObject> RegisteredOwner);
 
 	bool IsPropertyTypeValid(const FProperty* Property) const;
 

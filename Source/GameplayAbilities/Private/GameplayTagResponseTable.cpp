@@ -93,7 +93,7 @@ void UGameplayTagReponseTable::RegisterResponseForEvents(UAbilitySystemComponent
 	}
 }
 
-void UGameplayTagReponseTable::TagResponseEvent(const FGameplayTag Tag, int32 NewCount, UAbilitySystemComponent* ASC, int32 idx)
+void UGameplayTagReponseTable::TagResponseEvent(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, UAbilitySystemComponent* ASC, int32 idx)
 {
 	if (!ensure(Entries.IsValidIndex(idx)))
 	{
