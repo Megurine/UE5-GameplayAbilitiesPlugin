@@ -327,7 +327,7 @@ FGameplayEffectSpecHandle UPKM_AbilitySystemComponent::CreateMagnitudeEffectSpec
 {
 	if (!Context.IsValid())
 	{
-		Context = MakeEffectContext();
+		Context = MakeEffectContextFromInstigator(GetOwner());
 	}
 
 	FGameplayEffectSpecHandle NewHandle = MakeOutgoingSpec(GameplayEffectClass, Level, Context);
