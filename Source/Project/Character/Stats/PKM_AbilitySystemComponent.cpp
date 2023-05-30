@@ -23,7 +23,7 @@ void UPKM_AbilitySystemComponent::Init()
 	{
 		if (GameplayEffectClass)
 		{
-			FGameplayEffectContextHandle EffectContext = MakeEffectContext();
+			FGameplayEffectContextHandle EffectContext = MakeEffectContextFromInstigator(GetOwner());
 			UGameplayEffect* GameplayEffect = GameplayEffectClass->GetDefaultObject<UGameplayEffect>();
 			ApplyGameplayEffectToSelf(GameplayEffect, 0.0f, EffectContext);
 		}
