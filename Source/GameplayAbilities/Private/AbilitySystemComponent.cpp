@@ -2948,13 +2948,13 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 void UAbilitySystemComponent::GenerateLastAttributeChangeDatas(AActor* Instigator)
 {
-	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, UAttributeChangeDatasObject::StaticClass());
+	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, AttributeChangeDatasObjectClass);
 	LastAttributeChangeDatasObject->Instigator = Instigator;
 }
 
 void UAbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator)
 {
-	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, UAttributeChangeDatasObject::StaticClass());
+	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, AttributeChangeDatasObjectClass);
 	FGameplayEffectContextHandle SpecContext = Spec.GetContext();
 	LastAttributeChangeDatasObject->Instigator = SpecContext.GetInstigator(); //Can be nullptr
 	if (!LastAttributeChangeDatasObject->Instigator)

@@ -1871,5 +1871,8 @@ public :
 	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator);
 	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator);
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+		TSubclassOf<UAttributeChangeDatasObject> AttributeChangeDatasObjectClass = UAttributeChangeDatasObject::StaticClass();
+
 	UAttributeChangeDatasObject* LastAttributeChangeDatasObject = nullptr;
 };
