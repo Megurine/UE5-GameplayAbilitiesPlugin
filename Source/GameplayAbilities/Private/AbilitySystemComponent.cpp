@@ -2946,6 +2946,11 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 #undef LOCTEXT_NAMESPACE
 
+bool UAbilitySystemComponent::ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const
+{
+	return true;
+}
+
 void UAbilitySystemComponent::GenerateLastAttributeChangeDatas(AActor* Instigator)
 {
 	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, AttributeChangeDatasObjectClass);

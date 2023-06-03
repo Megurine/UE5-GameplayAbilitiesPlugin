@@ -1868,6 +1868,7 @@ protected:
 	
 public : 
 
+	virtual bool ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const;
 	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator);
 	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator);
 

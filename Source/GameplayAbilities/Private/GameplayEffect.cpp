@@ -2780,7 +2780,10 @@ bool FActiveGameplayEffectsContainer::InternalExecuteMod(FGameplayEffectSpec& Sp
 		 */
 		if (AttributeSet->PreGameplayEffectExecute(ExecuteData))
 		{
-			Owner->GenerateLastAttributeChangeDatasWithSpec(Spec, Owner->GetOwner());
+			if (Owner->ShouldGenerateLastAttributeChangeDatas(ModEvalData.Attribute.AttributeName))
+			{
+				Owner->GenerateLastAttributeChangeDatasWithSpec(Spec, Owner->GetOwner());
+			}
 
 			float OldValueOfProperty = Owner->GetNumericAttribute(ModEvalData.Attribute);
 			ApplyModToAttribute(ModEvalData.Attribute, ModEvalData.ModifierOp, ModEvalData.Magnitude, &ExecuteData);
@@ -3197,6 +3200,8 @@ void FActiveGameplayEffectsContainer::AddActiveGameplayEffectGrantedTagsAndModif
 
 	GAMEPLAYEFFECT_SCOPE_LOCK();
 
+	bool AtLeastOneModifierShouldGenerateLastAttributeChangeDatas = false;
+
 	// Register this ActiveGameplayEffects modifiers with our Attribute Aggregators
 	if (Effect.Spec.GetPeriod() <= UGameplayEffect::NO_PERIOD)
 	{
@@ -3226,6 +3231,11 @@ void FActiveGameplayEffectsContainer::AddActiveGameplayEffectGrantedTagsAndModif
 			if (ensure(Aggregator))
 			{
 				Aggregator->AddAggregatorMod(EvaluatedMagnitude, ModInfo.ModifierOp, ModInfo.EvaluationChannelSettings.GetEvaluationChannel(), &ModInfo.SourceTags, &ModInfo.TargetTags, Effect.PredictionKey.WasLocallyGenerated(), Effect.Handle, ModInfo.OverridePriority);
+			
+				if (Owner->ShouldGenerateLastAttributeChangeDatas(ModInfo.Attribute.AttributeName))
+				{
+					AtLeastOneModifierShouldGenerateLastAttributeChangeDatas = true;
+				}
 			}
 		}
 	}
@@ -3306,7 +3316,10 @@ void FActiveGameplayEffectsContainer::AddActiveGameplayEffectGrantedTagsAndModif
 		}
 	}
 
-	Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec, Owner->GetOwner());
+	if (AtLeastOneModifierShouldGenerateLastAttributeChangeDatas)
+	{
+		Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec, Owner->GetOwner());
+	}
 
 	// Generic notify for anyone listening
 	Owner->OnActiveGameplayEffectAddedDelegateToSelf.Broadcast(Owner, Effect.Spec, Effect.Handle);
@@ -3537,7 +3550,10 @@ void FActiveGameplayEffectsContainer::RemoveActiveGameplayEffectGrantedTagsAndMo
 				FAggregatorRef* RefPtr = AttributeAggregatorMap.Find(Mod.Attribute);
 				if(RefPtr)
 				{
-					Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec, Owner->GetOwner());
+					if (Owner->ShouldGenerateLastAttributeChangeDatas(Mod.Attribute.AttributeName))
+					{
+						Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec, Owner->GetOwner());
+					}
 
 					RefPtr->Get()->RemoveAggregatorMod(Effect.Handle);
 				}

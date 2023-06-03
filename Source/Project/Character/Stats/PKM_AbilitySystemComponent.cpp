@@ -90,21 +90,24 @@ const FGameplayAttribute UPKM_AbilitySystemComponent::GetAttributeByEnum(EPKM_At
 
 void UPKM_AbilitySystemComponent::SetAttributeBaseValue(EPKM_Attributes attribute, float value, EPKM_AttributesType type, bool clamp, AActor* Instigator)
 {
-	UE_LOG(LogTemp, Log, TEXT("--- PKM_GAS ---"));
-	UE_LOG(LogTemp, Log, TEXT("PKM_GAS EPKM_Attributes : %s"), *UEnum::GetValueAsName(attribute).ToString());
-	UE_LOG(LogTemp, Log, TEXT("PKM_GAS EPKM_AttributesType : %s"), *UEnum::GetValueAsName(type).ToString());
-	UE_LOG(LogTemp, Log, TEXT("PKM_GAS Value : %f"), value);
+	//UE_LOG(LogTemp, Log, TEXT("--- PKM_GAS ---"));
+	//UE_LOG(LogTemp, Log, TEXT("PKM_GAS EPKM_Attributes : %s"), *UEnum::GetValueAsName(attribute).ToString());
+	//UE_LOG(LogTemp, Log, TEXT("PKM_GAS EPKM_AttributesType : %s"), *UEnum::GetValueAsName(type).ToString());
+	//UE_LOG(LogTemp, Log, TEXT("PKM_GAS Value : %f"), value);
 	if (clamp)
 	{
 		value = ClampAttributeValue(attribute, type, value);
 	}
-	UE_LOG(LogTemp, Log, TEXT("PKM_GAS Value clamped : %f"), value);
-	UE_LOG(LogTemp, Log, TEXT("--- PKM_GAS ---"));
+	//UE_LOG(LogTemp, Log, TEXT("PKM_GAS Value clamped : %f"), value);
+	//UE_LOG(LogTemp, Log, TEXT("--- PKM_GAS ---"));
 
 	FGameplayAttribute attributeByEnum = GetAttributeByEnum(attribute, type);
 	if (attributeByEnum.IsValid())
 	{
-		GenerateLastAttributeChangeDatas(Instigator);
+		if (ShouldGenerateLastAttributeChangeDatas(attributeByEnum.AttributeName))
+		{
+			GenerateLastAttributeChangeDatas(Instigator);
+		}
 
 		SetNumericAttributeBase(attributeByEnum, value);
 
@@ -174,7 +177,10 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValueLimitWithMultiplyValueBef
 		FGameplayAttribute attributeByEnum = GetAttributeByEnum(attribute, type);
 		if (attributeByEnum.IsValid())
 		{
-			GenerateLastAttributeChangeDatas(Instigator);
+			if (ShouldGenerateLastAttributeChangeDatas(attributeByEnum.AttributeName))
+			{
+				GenerateLastAttributeChangeDatas(Instigator);
+			}
 
 			SetNumericAttributeBase(attributeByEnum, value * multiplierValueBefore);
 		}
@@ -377,6 +383,25 @@ FActiveGameplayEffectHandle UPKM_AbilitySystemComponent::ApplyGameplayEffectToTa
 		return BP_ApplyGameplayEffectSpecToTarget(CreateMagnitudeEffectSpec(GameplayEffectClass, EffectContext, TagMagnitudes, Level), Target);
 	}
 	return FActiveGameplayEffectHandle();
+}
+
+bool UPKM_AbilitySystemComponent::ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const
+{
+	if (AttributeName == "Hp")
+	{
+		return true;
+	}
+	return false;
+}
+
+void UPKM_AbilitySystemComponent::GenerateLastAttributeChangeDatas(AActor* Instigator)
+{
+	Super::GenerateLastAttributeChangeDatas(Instigator);
+}
+
+void UPKM_AbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator)
+{
+	Super::GenerateLastAttributeChangeDatasWithSpec(Spec, Instigator);
 }
 
 void UPKM_AbilitySystemComponent::BindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate)

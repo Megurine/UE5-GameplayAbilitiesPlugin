@@ -9,8 +9,6 @@
 #include "GameplayAbilitieTest/PKM_Types.h"
 #include "PKM_AbilitySystemComponent.generated.h"
 
-//class UPKM_TimelineGameplayEffectComp;
-
 USTRUCT(BlueprintType)
 struct FGameplayEffectClassFilter
 {
@@ -192,6 +190,10 @@ public :
 
 	UFUNCTION(BlueprintCallable, Category = GameplayEffects)
 		FActiveGameplayEffectHandle ApplyGameplayEffectToTargetWithTagMagnitudes(TSubclassOf<UGameplayEffect> GameplayEffectClass, UAbilitySystemComponent* Target, float Level, FGameplayEffectContextHandle EffectContext, TMap<FGameplayTag, float> TagMagnitudes);
+
+	virtual bool ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const override;
+	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator) override;
+	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator) override;
 
 #pragma region AttributeValueChange
 
