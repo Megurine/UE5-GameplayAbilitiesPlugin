@@ -26,20 +26,20 @@ public :
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 		TSoftObjectPtr<UTexture> Icon = nullptr;
 
-	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponent) const override;
-	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponent) const override;
-	virtual void EventAtEnd(UAbilitySystemComponent* AbilitySystemComponent) const override;
+	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const override;
+	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const override;
+	virtual void EventAtEnd(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const override;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-		void EventAtStartBP(UAbilitySystemComponent* AbilitySystemComponent) const;
-	virtual void EventAtStartBP_Implementation(UAbilitySystemComponent* AbilitySystemComponent) const {};
+		void EventAtStartBP(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const;
+	virtual void EventAtStartBP_Implementation(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-		void EventAtPeriodBP(UAbilitySystemComponent* AbilitySystemComponent) const;
-	virtual void EventAtPeriodBP_Implementation(UAbilitySystemComponent* AbilitySystemComponent) const {};
+		void EventAtPeriodBP(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const;
+	virtual void EventAtPeriodBP_Implementation(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-		void EventAtEndBP(UAbilitySystemComponent* AbilitySystemComponent) const;
-	virtual void EventAtEndBP_Implementation(UAbilitySystemComponent* AbilitySystemComponent) const {};
+		void EventAtEndBP(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const;
+	virtual void EventAtEndBP_Implementation(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
 
 };

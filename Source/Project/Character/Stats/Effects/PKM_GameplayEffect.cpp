@@ -26,17 +26,17 @@ void UPKM_GameplayEffect::Init(UPKM_AbilitySystemComponent* AbilitySystemComp, F
 	}
 }
 
-void UPKM_GameplayEffect::EventAtStart(UAbilitySystemComponent* AbilitySystemComponent) const
+void UPKM_GameplayEffect::EventAtStart(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const
 {
-	EventAtStartBP(AbilitySystemComponent);
+	EventAtStartBP(AbilitySystemComponentTarget, Instigator);
 }
 
-void UPKM_GameplayEffect::EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponent) const
+void UPKM_GameplayEffect::EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const
 {
-	EventAtPeriodBP(AbilitySystemComponent);
+	EventAtPeriodBP(AbilitySystemComponentTarget, Instigator);
 }
 
-void UPKM_GameplayEffect::EventAtEnd(UAbilitySystemComponent* AbilitySystemComponent) const
+void UPKM_GameplayEffect::EventAtEnd(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const
 {
-	EventAtEndBP(AbilitySystemComponent);
+	EventAtEndBP(AbilitySystemComponentTarget, Instigator);
 }

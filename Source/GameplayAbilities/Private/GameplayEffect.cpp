@@ -1986,7 +1986,8 @@ void FActiveGameplayEffectsContainer::ExecuteActiveEffectsFrom(FGameplayEffectSp
 
 	if (SpecToUse.Def)
 	{
-		SpecToUse.Def->EventAtPeriod(Owner);
+		FGameplayEffectContextHandle SpecContext = SpecToUse.GetContext();
+		SpecToUse.Def->EventAtPeriod(Owner, SpecContext.GetInstigator());
 	}
 
 	// Capture our own tags.
@@ -3196,7 +3197,8 @@ void FActiveGameplayEffectsContainer::InternalOnActiveGameplayEffectAdded(FActiv
 
 	if (Effect.Spec.Def)
 	{
-		Effect.Spec.Def->EventAtStart(Owner);
+		FGameplayEffectContextHandle SpecContext = Effect.Spec.GetContext();
+		Effect.Spec.Def->EventAtStart(Owner, SpecContext.GetInstigator());
 	}
 }
 
@@ -3524,7 +3526,8 @@ void FActiveGameplayEffectsContainer::InternalOnActiveGameplayEffectRemoved(FAct
 
 	if (Effect.Spec.Def)
 	{
-		Effect.Spec.Def->EventAtEnd(Owner);
+		FGameplayEffectContextHandle SpecContext = Effect.Spec.GetContext();
+		Effect.Spec.Def->EventAtEnd(Owner, SpecContext.GetInstigator());
 
 		// Remove our tag requirements from the dependency map
 		RemoveActiveEffectTagDependency(Effect.Spec.Def->OngoingTagRequirements.IgnoreTags, Effect.Handle);

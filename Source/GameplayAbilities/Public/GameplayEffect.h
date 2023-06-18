@@ -1957,9 +1957,9 @@ public:
 	/** Check for any errors */
 	void ValidateGameplayEffect();
 
-	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponent) const {};
-	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponent) const {};
-	virtual void EventAtEnd(UAbilitySystemComponent* AbilitySystemComponent) const {};
+	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
+	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
+	virtual void EventAtEnd(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
 
 	// ---------------------------------------------------------------------------------------------------------------------------------
 
