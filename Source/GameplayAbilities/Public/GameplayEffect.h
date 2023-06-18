@@ -1957,6 +1957,10 @@ public:
 	/** Check for any errors */
 	void ValidateGameplayEffect();
 
+	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponent) const {};
+	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponent) const {};
+	virtual void EventAtEnd(UAbilitySystemComponent* AbilitySystemComponent) const {};
+
 	// ---------------------------------------------------------------------------------------------------------------------------------
 
 	/** Policy for the duration of this effect */

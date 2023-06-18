@@ -25,4 +25,21 @@ public :
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 		TSoftObjectPtr<UTexture> Icon = nullptr;
+
+	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponent) const override;
+	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponent) const override;
+	virtual void EventAtEnd(UAbilitySystemComponent* AbilitySystemComponent) const override;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+		void EventAtStartBP(UAbilitySystemComponent* AbilitySystemComponent) const;
+	virtual void EventAtStartBP_Implementation(UAbilitySystemComponent* AbilitySystemComponent) const {};
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+		void EventAtPeriodBP(UAbilitySystemComponent* AbilitySystemComponent) const;
+	virtual void EventAtPeriodBP_Implementation(UAbilitySystemComponent* AbilitySystemComponent) const {};
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+		void EventAtEndBP(UAbilitySystemComponent* AbilitySystemComponent) const;
+	virtual void EventAtEndBP_Implementation(UAbilitySystemComponent* AbilitySystemComponent) const {};
+
 };

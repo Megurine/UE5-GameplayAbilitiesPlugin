@@ -1984,6 +1984,11 @@ void FActiveGameplayEffectsContainer::ExecuteActiveEffectsFrom(FGameplayEffectSp
 
 	FGameplayEffectSpec& SpecToUse = Spec;
 
+	if (SpecToUse.Def)
+	{
+		SpecToUse.Def->EventAtPeriod(Owner);
+	}
+
 	// Capture our own tags.
 	// TODO: We should only capture them if we need to. We may have snapshotted target tags (?) (in the case of dots with exotic setups?)
 
@@ -3188,6 +3193,11 @@ void FActiveGameplayEffectsContainer::InternalOnActiveGameplayEffectAdded(FActiv
 	
 	Effect.bIsInhibited = true; // Effect has to start inhibited, if it should be uninhibited, CheckOnGoingTagRequirements will handle that state change
 	Effect.CheckOngoingTagRequirements(OwnerTags, *this);
+
+	if (Effect.Spec.Def)
+	{
+		Effect.Spec.Def->EventAtStart(Owner);
+	}
 }
 
 void FActiveGameplayEffectsContainer::AddActiveGameplayEffectGrantedTagsAndModifiers(FActiveGameplayEffect& Effect, bool bInvokeGameplayCueEvents)
@@ -3514,6 +3524,8 @@ void FActiveGameplayEffectsContainer::InternalOnActiveGameplayEffectRemoved(FAct
 
 	if (Effect.Spec.Def)
 	{
+		Effect.Spec.Def->EventAtEnd(Owner);
+
 		// Remove our tag requirements from the dependency map
 		RemoveActiveEffectTagDependency(Effect.Spec.Def->OngoingTagRequirements.IgnoreTags, Effect.Handle);
 		RemoveActiveEffectTagDependency(Effect.Spec.Def->OngoingTagRequirements.RequireTags, Effect.Handle);

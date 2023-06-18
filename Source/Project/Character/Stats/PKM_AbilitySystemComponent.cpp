@@ -8,6 +8,8 @@ UPKM_AbilitySystemComponent::UPKM_AbilitySystemComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+
+	AttributeChangeDatasObjectClass = UAttributeChangeDatasObject::StaticClass();
 }
 
 void UPKM_AbilitySystemComponent::Init()
