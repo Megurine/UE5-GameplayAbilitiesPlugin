@@ -7,6 +7,7 @@
 #include "GameplayAbilitieTest/FX/PKM_ParticleSystemComponent.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayAbilitieTest/PKM_Types.h"
+#include "Camera/CameraShakeBase.h"
 #include "PKM_GameplayEffectActorComponent.generated.h"
 
 class UPKM_AbilitySystemComponent;
