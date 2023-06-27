@@ -80,6 +80,54 @@ public:
 
 #pragma endregion Particles
 
+#pragma region ShakeCam
+
+	void ProcessCameraShake(TSubclassOf<class UCameraShakeBase> ShakeClass, EAttachmentComponentSocket ShakeSocket, float ShakeRadius);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|Start")
+		TSubclassOf<class UCameraShakeBase> ShakeClassStart = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|Start")
+		EAttachmentComponentSocket ShakeSocketStart = EAttachmentComponentSocket::BODY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|Start")
+		float ShakeRadiusStart = 4000;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|End")
+		TSubclassOf<class UCameraShakeBase> ShakeClassEnd = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|End")
+		EAttachmentComponentSocket ShakeSocketEnd = EAttachmentComponentSocket::BODY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|End")
+		float ShakeRadiusEnd = 4000;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|Periodic")
+		TSubclassOf<class UCameraShakeBase> ShakeClassPeriodic = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|Periodic")
+		EAttachmentComponentSocket ShakeSocketPeriodic = EAttachmentComponentSocket::BODY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shake|Periodic")
+		float ShakeRadiusPeriodic = 4000;
+
+#pragma endregion ShakeCam
+
+#pragma region Sound
+
+	void PlaySound(TSoftObjectPtr<USoundBase> SoundToPlay);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound|Start")
+		TSoftObjectPtr<USoundBase> SoundStart = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound|End")
+		TSoftObjectPtr<USoundBase> SoundEnd = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound|Periodic")
+		TSoftObjectPtr<USoundBase> SoundPeriodic = nullptr;
+
+#pragma endregion Sound
+
 #pragma region Time
 
 	UPROPERTY(BlueprintReadOnly, Category = "Time")

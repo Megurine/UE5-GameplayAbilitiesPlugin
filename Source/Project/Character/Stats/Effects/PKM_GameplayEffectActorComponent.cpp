@@ -4,7 +4,8 @@
 #include "GameplayAbilitieTest/Character/Stats/PKM_AbilitySystemComponent.h"
 #include "GameplayAbilitieTest/FX/FXBlueprintFunctionLibrary.h"
 #include "GameplayAbilitieTest/Character/Stats/Effects/PKM_TimelineGameplayEffectComp.h"
-
+#include "Kismet/GameplayStatics.h"
+#include "GameplayAbilitieTest/Tools/Interfaces/PKM_GetComponentInterface.h"
 
 
 UPKM_GameplayEffectActorComponent::UPKM_GameplayEffectActorComponent()
@@ -21,6 +22,9 @@ void UPKM_GameplayEffectActorComponent::Init(UPKM_AbilitySystemComponent* _PKMAb
 	{
 		FXComponentStart = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), TEXT("StartFX"), ParticleSettingsStart);
 	}
+
+	ProcessCameraShake(ShakeClassStart, ShakeSocketStart, ShakeRadiusStart);
+	PlaySound(SoundStart);
 
 	if (PKMAbilitySystemComponent)
 	{
@@ -51,6 +55,9 @@ void UPKM_GameplayEffectActorComponent::PeriodicExecute()
 	{
 		FXComponentPeriodic = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), TEXT("PeriodicFX"), ParticleSettingsPeriodic);
 	}
+
+	ProcessCameraShake(ShakeClassPeriodic, ShakeSocketPeriodic, ShakeRadiusPeriodic);
+	PlaySound(SoundPeriodic);
 }
 
 void UPKM_GameplayEffectActorComponent::ClearFXComponentPeriodic()
@@ -77,6 +84,9 @@ void UPKM_GameplayEffectActorComponent::EndPlay(const EEndPlayReason::Type EndPl
 		UFXBlueprintFunctionLibrary::AskDestroyAfterDeactivateDelayed(FXComponentEnd, DeactiveParticleDelayEndOnEnd, DestroyParticleDelayEndOnEnd);
 	}
 
+	ProcessCameraShake(ShakeClassEnd, ShakeSocketEnd, ShakeRadiusEnd);
+	PlaySound(SoundEnd);
+
 	for (UPKM_TimelineGameplayEffectComp* TimelineGameplayEffectCompCreated : TimelineGameplayEffectCompsCreated)
 	{
 		if (TimelineGameplayEffectCompCreated)
@@ -98,6 +108,46 @@ void UPKM_GameplayEffectActorComponent::TickComponent(float DeltaTime, ELevelTic
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+void UPKM_GameplayEffectActorComponent::ProcessCameraShake(TSubclassOf<class UCameraShakeBase> ShakeClass, EAttachmentComponentSocket ShakeSocket, float ShakeRadius)
+{
+	if (ShakeClass)
+	{
+		AActor* ownerRef = GetOwner();
+		if (ownerRef)
+		{
+			FVector locationShake = FVector::ZeroVector;
+
+			if (ownerRef->Implements<UPKM_GetComponentInterface>())
+			{
+				UMeshComponent* MeshComponent = IPKM_GetComponentInterface::Execute_GetPrincipalMesh(ownerRef);
+				if (MeshComponent)
+				{
+					locationShake = MeshComponent->GetSocketLocation(IPKM_GetComponentInterface::Execute_GetBoneNameFromAttachmentComponentSocket(ownerRef, ShakeSocket));
+				}
+				else
+				{
+					locationShake = ownerRef->GetRootComponent()->GetSocketLocation(IPKM_GetComponentInterface::Execute_GetBoneNameFromAttachmentComponentSocket(ownerRef, ShakeSocket));
+				}
+			}
+			else
+			{
+				locationShake = ownerRef->GetRootComponent()->GetComponentLocation();
+			}
+
+			UGameplayStatics::PlayWorldCameraShake(this, ShakeClass, locationShake, 0.0f, ShakeRadius, 2.0f, false);
+		}
+	}
+}
+
+void UPKM_GameplayEffectActorComponent::PlaySound(TSoftObjectPtr<USoundBase> SoundToPlay)
+{
+	USoundBase* SoundToPlayLoaded = SoundToPlay.LoadSynchronous();
+	if (SoundToPlayLoaded)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundToPlayLoaded, GetOwner()->GetActorLocation(), FRotator(), FMath::RandRange(0.8f, 1.0f), FMath::RandRange(0.7f, 1.3f));
+	}
 }
 
 float UPKM_GameplayEffectActorComponent::GetRemaininTimePercent() const
