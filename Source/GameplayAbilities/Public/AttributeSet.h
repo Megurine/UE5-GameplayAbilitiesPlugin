@@ -68,6 +68,8 @@ struct GAMEPLAYABILITIES_API FGameplayAttribute
 
 	FGameplayAttribute(FProperty *NewProperty);
 
+	virtual ~FGameplayAttribute() {}
+
 	bool IsValid() const
 	{
 		return Attribute != nullptr;

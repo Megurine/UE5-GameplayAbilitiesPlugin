@@ -1091,8 +1091,8 @@ struct FOnAttributeChangeData
 
 	float	NewValue;
 	float	OldValue;
-	UAttributeChangeDatasObject* ChangeDatas = nullptr;
 	const FGameplayEffectModCallbackData* GEModData;
+	UAttributeChangeDatasObject* ChangeDatas = nullptr;
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnGameplayAttributeValueChange, const FOnAttributeChangeData&);
