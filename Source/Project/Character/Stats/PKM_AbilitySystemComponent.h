@@ -146,6 +146,7 @@ public :
 	virtual void SetNumericAttribute_Internal(const FGameplayAttribute& Attribute, float& NewFloatValue) override;
 
 	virtual void OnPeriodicGameplayEffectExecuteOnTarget(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecExecuted, FActiveGameplayEffectHandle ActiveHandle) override;
+	virtual void OnPeriodicGameplayEffectExecuteOnSelf(UAbilitySystemComponent* Source, const FGameplayEffectSpec& SpecExecuted, FActiveGameplayEffectHandle ActiveHandle) override;
 
 	UFUNCTION(BlueprintCallable)
 		const FGameplayAttribute GetAttributeByEnum(EPKM_Attributes attribute, EPKM_AttributesType type) const;

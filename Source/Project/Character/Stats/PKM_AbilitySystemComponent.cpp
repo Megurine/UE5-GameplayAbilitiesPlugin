@@ -85,6 +85,24 @@ void UPKM_AbilitySystemComponent::OnPeriodicGameplayEffectExecuteOnTarget(UAbili
 	}
 }
 
+void UPKM_AbilitySystemComponent::OnPeriodicGameplayEffectExecuteOnSelf(UAbilitySystemComponent* Source, const FGameplayEffectSpec& SpecExecuted, FActiveGameplayEffectHandle ActiveHandle)
+{
+	Super::OnPeriodicGameplayEffectExecuteOnSelf(Source, SpecExecuted, ActiveHandle);
+
+	uint32 handleId = GetTypeHash(ActiveHandle);
+	if (handleId != -1)
+	{
+		if (GameplayEffectActorComponents.Contains(handleId))
+		{
+			UPKM_GameplayEffectActorComponent* GameplayEffectActorComponent = GameplayEffectActorComponents.FindRef(handleId);
+			if (GameplayEffectActorComponent)
+			{
+				GameplayEffectActorComponent->PeriodicExecute();
+			}
+		}
+	}
+}
+
 const FGameplayAttribute UPKM_AbilitySystemComponent::GetAttributeByEnum(EPKM_Attributes attribute, EPKM_AttributesType type) const
 {
 	return pkmAttributes->GetAttributeByEnum(attribute, type);
