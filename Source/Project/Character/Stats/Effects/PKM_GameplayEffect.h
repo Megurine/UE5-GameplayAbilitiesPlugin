@@ -42,4 +42,6 @@ public :
 		void EventAtEndBP(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const;
 	virtual void EventAtEndBP_Implementation(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const {};
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+		static TSoftObjectPtr<UTexture> GetClassVariableIcon(TSubclassOf<UPKM_GameplayEffect> _effectClass);
 };

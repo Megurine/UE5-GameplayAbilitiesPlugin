@@ -574,7 +574,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectAdd(UAbilitySystemCompon
 
 			if (filterValid)
 			{
-				OnActiveGameplayEffectAddedDelegates[i].Delegate.Execute(EffectClass, true);
+				OnActiveGameplayEffectAddedDelegates[i].Delegate.Execute(EffectClass, Handle, true);
 			}
 		}
 		else
@@ -639,7 +639,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectRemove(const FActiveGame
 
 			if (filterValid)
 			{
-				OnActiveGameplayEffectAddedDelegates[i].Delegate.Execute(EffectClass, false);
+				OnActiveGameplayEffectAddedDelegates[i].Delegate.Execute(EffectClass, EffectRemoved.Handle, false);
 			}
 		}
 		else

@@ -40,3 +40,12 @@ void UPKM_GameplayEffect::EventAtEnd(UAbilitySystemComponent* AbilitySystemCompo
 {
 	EventAtEndBP(AbilitySystemComponentTarget, Instigator);
 }
+
+TSoftObjectPtr<UTexture> UPKM_GameplayEffect::GetClassVariableIcon(TSubclassOf<UPKM_GameplayEffect> _effectClass)
+{
+	if (UPKM_GameplayEffect* DefaultActor = Cast<UPKM_GameplayEffect>(_effectClass->GetDefaultObject(true)))
+	{
+		return DefaultActor->Icon;
+	}
+	return nullptr;
+};

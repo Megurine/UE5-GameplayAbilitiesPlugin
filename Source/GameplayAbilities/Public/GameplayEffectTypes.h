@@ -233,10 +233,10 @@ struct GAMEPLAYABILITIES_API FActiveGameplayEffectHandle
 		Handle = INDEX_NONE;
 	}
 
-private:
+	UPROPERTY(BlueprintReadWrite)
+		int32 Handle;
 
-	UPROPERTY()
-	int32 Handle;
+private:
 
 	UPROPERTY()
 	bool bPassedFiltersAndWasExecuted;

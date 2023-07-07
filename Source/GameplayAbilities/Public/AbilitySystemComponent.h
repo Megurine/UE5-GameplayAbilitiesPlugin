@@ -368,6 +368,7 @@ class GAMEPLAYABILITIES_API UAbilitySystemComponent : public UGameplayTasksCompo
 	virtual void RecomputeGameplayEffectStartTimes(const float WorldTime, const float ServerWorldTime);
 
 	/** Return start time and total duration of a gameplay effect */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = GameplayEffects)
 	void GetGameplayEffectStartTimeAndDuration(FActiveGameplayEffectHandle Handle, float& StartEffectTime, float& Duration) const;
 
 	/** Dynamically update the set-by-caller magnitude for an active gameplay effect */
