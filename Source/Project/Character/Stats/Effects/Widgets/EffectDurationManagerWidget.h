@@ -31,8 +31,8 @@ public :
 		void OnEffectAdded(TSubclassOf<UGameplayEffect> EffectClassFilter, FActiveGameplayEffectHandle handle, bool added);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-		void AddEffectDurationWidgetToParentWidget(UEffectDurationWidget* EffectDurationWidget);
-	virtual void AddEffectDurationWidgetToParentWidget_Implementation(UEffectDurationWidget* EffectDurationWidget) {};
+		void AddEffectDurationWidgetToParentWidget(UEffectDurationWidget* EffectDurationWidget, EEffectWidgetVisibilityType WidgetVisibilityType);
+	virtual void AddEffectDurationWidgetToParentWidget_Implementation(UEffectDurationWidget* EffectDurationWidget, EEffectWidgetVisibilityType WidgetVisibilityType) {};
 
 	UPROPERTY(EditDefaultsOnly)
 		TSubclassOf<UEffectDurationWidget> EffectDurationWidgetClass;

@@ -40,7 +40,8 @@ void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> Ef
 			TSubclassOf<UPKM_GameplayEffect> PKMEffectClassFilter = EffectClassFilter;
 			if (PKMEffectClassFilter)
 			{
-				if (UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(PKMEffectClassFilter) != EEffectWidgetVisibilityType::INVISIBLE)
+				EEffectWidgetVisibilityType WidgetVisibilityType = UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(PKMEffectClassFilter);
+				if (WidgetVisibilityType != EEffectWidgetVisibilityType::INVISIBLE)
 				{
 					TSoftObjectPtr<UTexture> Icon = UPKM_GameplayEffect::GetClassVariableIcon(PKMEffectClassFilter);
 
@@ -55,7 +56,7 @@ void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> Ef
 
 						EffectDurationWidgets.Add(handle.Handle, widgetCreated);
 
-						AddEffectDurationWidgetToParentWidget(widgetCreated);
+						AddEffectDurationWidgetToParentWidget(widgetCreated, WidgetVisibilityType);
 
 						widgetCreated->Init(Icon, Duration, StartEffectTime);
 
