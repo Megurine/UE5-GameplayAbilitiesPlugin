@@ -40,29 +40,32 @@ void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> Ef
 			TSubclassOf<UPKM_GameplayEffect> PKMEffectClassFilter = EffectClassFilter;
 			if (PKMEffectClassFilter)
 			{
-				TSoftObjectPtr<UTexture> Icon = UPKM_GameplayEffect::GetClassVariableIcon(PKMEffectClassFilter);
-
-				float StartEffectTime;
-				float Duration;
-				AbilitySystemComponent->GetGameplayEffectStartTimeAndDuration(handle, StartEffectTime, Duration);
-
-				if (EffectDurationWidgetClass)
+				if (UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(PKMEffectClassFilter) != EEffectWidgetVisibilityType::INVISIBLE)
 				{
-					//this->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("MyButtonName"));
-					UEffectDurationWidget* widgetCreated = CreateWidget<UEffectDurationWidget>(GetWorld(), EffectDurationWidgetClass);
+					TSoftObjectPtr<UTexture> Icon = UPKM_GameplayEffect::GetClassVariableIcon(PKMEffectClassFilter);
 
-					EffectDurationWidgets.Add(handle.Handle, widgetCreated);
+					float StartEffectTime;
+					float Duration;
+					AbilitySystemComponent->GetGameplayEffectStartTimeAndDuration(handle, StartEffectTime, Duration);
 
-					AddEffectDurationWidgetToParentWidget(widgetCreated);
-
-					widgetCreated->Init(Icon, Duration, StartEffectTime);
-
-					if (EffectDurationWidgets.Num() == 1)
+					if (EffectDurationWidgetClass)
 					{
-						UWorld* worldRef = GetWorld();
-						if (worldRef)
+						//this->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("MyButtonName"));
+						UEffectDurationWidget* widgetCreated = CreateWidget<UEffectDurationWidget>(GetWorld(), EffectDurationWidgetClass);
+
+						EffectDurationWidgets.Add(handle.Handle, widgetCreated);
+
+						AddEffectDurationWidgetToParentWidget(widgetCreated);
+
+						widgetCreated->Init(Icon, Duration, StartEffectTime);
+
+						if (EffectDurationWidgets.Num() == 1)
 						{
-							worldRef->GetTimerManager().SetTimer(TimerHandleUpdate, TimerDelegateUpdate, UpdateFrequency, true);
+							UWorld* worldRef = GetWorld();
+							if (worldRef)
+							{
+								worldRef->GetTimerManager().SetTimer(TimerHandleUpdate, TimerDelegateUpdate, UpdateFrequency, true);
+							}
 						}
 					}
 				}

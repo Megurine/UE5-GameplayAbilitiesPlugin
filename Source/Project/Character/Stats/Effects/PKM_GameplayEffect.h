@@ -8,9 +8,14 @@
 #include "GameplayAbilitieTest/Character/Stats/Effects/PKM_GameplayEffectActorComponent.h"
 #include "PKM_GameplayEffect.generated.h"
 
-/**
- * 
- */
+UENUM(BlueprintType)
+enum class EEffectWidgetVisibilityType : uint8
+{
+	INVISIBLE = 0 UMETA(DisplayName = "Invisible"),
+	VISIBLEGOOD = 1 UMETA(DisplayName = "Visible (Good)"),
+	VISIBLEBAD = 1 UMETA(DisplayName = "Visible (Bad)"),
+};
+
 UCLASS()
 class GAMEPLAYABILITIETEST_API UPKM_GameplayEffect : public UGameplayEffect
 {
@@ -25,6 +30,9 @@ public :
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 		TSoftObjectPtr<UTexture> Icon = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
+		EEffectWidgetVisibilityType WidgetVisibilityType = EEffectWidgetVisibilityType::INVISIBLE;
 
 	virtual void EventAtStart(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const override;
 	virtual void EventAtPeriod(UAbilitySystemComponent* AbilitySystemComponentTarget, AActor* Instigator) const override;
@@ -44,4 +52,7 @@ public :
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 		static TSoftObjectPtr<UTexture> GetClassVariableIcon(TSubclassOf<UPKM_GameplayEffect> _effectClass);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+		static EEffectWidgetVisibilityType GetClassVariableWidgetVisibilityType(TSubclassOf<UPKM_GameplayEffect> _effectClass);
 };

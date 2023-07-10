@@ -49,3 +49,12 @@ TSoftObjectPtr<UTexture> UPKM_GameplayEffect::GetClassVariableIcon(TSubclassOf<U
 	}
 	return nullptr;
 };
+
+EEffectWidgetVisibilityType UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(TSubclassOf<UPKM_GameplayEffect> _effectClass)
+{
+	if (UPKM_GameplayEffect* DefaultActor = Cast<UPKM_GameplayEffect>(_effectClass->GetDefaultObject(true)))
+	{
+		return DefaultActor->WidgetVisibilityType;
+	}
+	return EEffectWidgetVisibilityType::INVISIBLE;
+};
