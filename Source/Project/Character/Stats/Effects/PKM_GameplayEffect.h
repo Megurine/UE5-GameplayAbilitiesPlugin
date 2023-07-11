@@ -13,7 +13,7 @@ enum class EEffectWidgetVisibilityType : uint8
 {
 	INVISIBLE = 0 UMETA(DisplayName = "Invisible"),
 	VISIBLEGOOD = 1 UMETA(DisplayName = "Visible (Good)"),
-	VISIBLEBAD = 1 UMETA(DisplayName = "Visible (Bad)"),
+	VISIBLEBAD = 2 UMETA(DisplayName = "Visible (Bad)"),
 };
 
 UCLASS()
