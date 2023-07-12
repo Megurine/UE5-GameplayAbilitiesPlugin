@@ -41,7 +41,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 		void UpdateVisiblityUpdateWidgets();
-	virtual void UpdateVisiblityUpdateWidgets_Implementation();
+	virtual void UpdateVisiblityUpdateWidgets_Implementation() {};
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 		void UpdateIcon(UTexture* _icon);

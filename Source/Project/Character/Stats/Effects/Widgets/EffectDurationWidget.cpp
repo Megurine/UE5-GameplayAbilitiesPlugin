@@ -9,6 +9,11 @@ void UEffectDurationWidget::Init(TSoftObjectPtr<UTexture> Icon, float _Duration,
 	Duration = _Duration;
 	StartTime = _StartTime;
 
+	if (MaterialCooldown)
+	{
+		MaterialCooldownInstance = UKismetMaterialLibrary::CreateDynamicMaterialInstance(this, MaterialCooldown);
+	}
+
 	HadToUpdate = (Duration > 0);
 	UpdateVisiblityUpdateWidgets();
 
@@ -25,26 +30,20 @@ void UEffectDurationWidget::Init(TSoftObjectPtr<UTexture> Icon, float _Duration,
 	}
 }
 
-void UEffectDurationWidget::UpdateVisiblityUpdateWidgets_Implementation()
-{
-	if (HadToUpdate)
-	{
-		MaterialCooldownInstance = UKismetMaterialLibrary::CreateDynamicMaterialInstance(this, MaterialCooldown);
-		if (MaterialCooldownInstance)
-		{
-			MaterialCooldownInstance->SetScalarParameterValue("startTime", StartTime);
-			MaterialCooldownInstance->SetScalarParameterValue("duration", Duration);
-		}
-	}
-}
-
 void UEffectDurationWidget::Update(float GameTime)
 {
 	remainingTime = FMath::Max(0.0f, Duration - (GameTime - StartTime));
 
 	if (MaterialCooldownInstance)
 	{
-		MaterialCooldownInstance->SetScalarParameterValue("percent", remainingTime / Duration);
+		if (Duration > 0)
+		{
+			MaterialCooldownInstance->SetScalarParameterValue("percent", remainingTime / Duration);
+		}
+		else
+		{
+			MaterialCooldownInstance->SetScalarParameterValue("percent", 1.0f);
+		}
 	}
 
 	UpdateBP();

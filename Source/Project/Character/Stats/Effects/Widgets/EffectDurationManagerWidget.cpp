@@ -100,7 +100,10 @@ void UEffectDurationManagerWidget::UpdateWidgets()
 		float gameTime = worldRef->GetTimeSeconds();
 		for (const TPair<int32, UEffectDurationWidget*>& widget : EffectDurationWidgets)
 		{
-			widget.Value->Update(gameTime);
+			if (widget.Value->HadToUpdate)
+			{
+				widget.Value->Update(gameTime);
+			}
 		}
 	}
 }
