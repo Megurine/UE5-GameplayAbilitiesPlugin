@@ -22,7 +22,7 @@ void UAbilityTask_WaitGameplayTag::Activate()
 	}
 }
 
-void UAbilityTask_WaitGameplayTag::GameplayTagCallback(const FGameplayTag InTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded)
+void UAbilityTask_WaitGameplayTag::GameplayTagCallback(const FGameplayTag InTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation)
 {
 }
 

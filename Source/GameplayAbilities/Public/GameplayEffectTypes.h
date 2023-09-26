@@ -1053,10 +1053,18 @@ namespace EGameplayCueEvent
 	};
 }
 
+UENUM(BlueprintType)
+enum class EOnGameplayEffectTagCountOperation : uint8
+{
+	ADDED = 0 UMETA(DisplayName = "Added"),
+	REMOVED = 1 UMETA(DisplayName = "Removed"),
+	INTERNALCHECK = 2 UMETA(DisplayName = "No changes (InternalCheck)"),
+};
+
 DECLARE_DELEGATE_OneParam(FOnGameplayAttributeEffectExecuted, struct FGameplayModifierEvaluatedData&);
 DECLARE_DELEGATE(FDeferredTagChangeDelegate);
 
-DECLARE_MULTICAST_DELEGATE_FourParams(FOnGameplayEffectTagCountChanged, const FGameplayTag, int32, const FGameplayTag, bool);
+DECLARE_MULTICAST_DELEGATE_FourParams(FOnGameplayEffectTagCountChanged, const FGameplayTag, int32, const FGameplayTag, EOnGameplayEffectTagCountOperation);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnGivenActiveGameplayEffectRemoved, const FActiveGameplayEffect&);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnActiveGameplayEffectRemoved_Info, const FGameplayEffectRemovalInfo&);
@@ -1451,7 +1459,7 @@ protected:
 
 	void Unregister();
 
-	void GameplayTagEventCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, TWeakObjectPtr<UObject> RegisteredOwner);
+	void GameplayTagEventCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation, TWeakObjectPtr<UObject> RegisteredOwner);
 
 	bool IsPropertyTypeValid(const FProperty* Property) const;
 

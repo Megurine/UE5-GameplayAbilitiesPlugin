@@ -2786,9 +2786,9 @@ bool FActiveGameplayEffectsContainer::InternalExecuteMod(FGameplayEffectSpec& Sp
 		 */
 		if (AttributeSet->PreGameplayEffectExecute(ExecuteData))
 		{
-			if (Owner->ShouldGenerateLastAttributeChangeDatas(ModEvalData.Attribute.AttributeName))
+			if (Owner->ShouldGenerateLastAttributeChangeDatas(ModEvalData.Attribute))
 			{
-				Owner->GenerateLastAttributeChangeDatasWithSpec(Spec, Owner->GetOwner());
+				Owner->GenerateLastAttributeChangeDatasWithSpec(Spec);
 			}
 
 			float OldValueOfProperty = Owner->GetNumericAttribute(ModEvalData.Attribute);
@@ -3244,7 +3244,7 @@ void FActiveGameplayEffectsContainer::AddActiveGameplayEffectGrantedTagsAndModif
 			{
 				Aggregator->AddAggregatorMod(EvaluatedMagnitude, ModInfo.ModifierOp, ModInfo.EvaluationChannelSettings.GetEvaluationChannel(), &ModInfo.SourceTags, &ModInfo.TargetTags, Effect.PredictionKey.WasLocallyGenerated(), Effect.Handle, ModInfo.OverridePriority);
 			
-				if (Owner->ShouldGenerateLastAttributeChangeDatas(ModInfo.Attribute.AttributeName))
+				if (Owner->ShouldGenerateLastAttributeChangeDatas(ModInfo.Attribute))
 				{
 					AtLeastOneModifierShouldGenerateLastAttributeChangeDatas = true;
 				}
@@ -3330,7 +3330,7 @@ void FActiveGameplayEffectsContainer::AddActiveGameplayEffectGrantedTagsAndModif
 
 	if (AtLeastOneModifierShouldGenerateLastAttributeChangeDatas)
 	{
-		Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec, Owner->GetOwner());
+		Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec);
 	}
 
 	// Generic notify for anyone listening
@@ -3565,9 +3565,9 @@ void FActiveGameplayEffectsContainer::RemoveActiveGameplayEffectGrantedTagsAndMo
 				FAggregatorRef* RefPtr = AttributeAggregatorMap.Find(Mod.Attribute);
 				if(RefPtr)
 				{
-					if (Owner->ShouldGenerateLastAttributeChangeDatas(Mod.Attribute.AttributeName))
+					if (Owner->ShouldGenerateLastAttributeChangeDatas(Mod.Attribute))
 					{
-						Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec, Owner->GetOwner());
+						Owner->GenerateLastAttributeChangeDatasWithSpec(Effect.Spec);
 					}
 
 					RefPtr->Get()->RemoveAggregatorMod(Effect.Handle);
@@ -3828,7 +3828,7 @@ void FActiveGameplayEffectsContainer::RestartActiveGameplayEffectDuration(FActiv
 	OnDurationChange(ActiveGameplayEffect);
 }
 
-void FActiveGameplayEffectsContainer::OnOwnerTagChange(FGameplayTag TagChange, int32 NewCount, FGameplayTag TriggerTagChange, bool TagAdded)
+void FActiveGameplayEffectsContainer::OnOwnerTagChange(FGameplayTag TagChange, int32 NewCount, FGameplayTag TriggerTagChange, EOnGameplayEffectTagCountOperation TagOperation)
 {
 	// It may be beneficial to do a scoped lock on attribute re-evaluation during this function
 	GAMEPLAYEFFECT_SCOPE_LOCK();

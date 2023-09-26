@@ -18,7 +18,7 @@ enum class EPKM_AttributesType : uint8
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FAttributeValueChangeDelegate, float, newValue, float, oldValue, UAttributeChangeDatasObject*, changeDatas);
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FGameplayEffectAddedDelegate, TSubclassOf<UGameplayEffect>, EffectClassFilter, FActiveGameplayEffectHandle, handle, bool, added);
-DECLARE_DYNAMIC_DELEGATE_FourParams(FOnGameplayTagChanged, const FGameplayTag, Tag, int32, Count, const FGameplayTag, TriggerTag, bool, TagAdded);
+DECLARE_DYNAMIC_DELEGATE_FourParams(FOnGameplayTagChanged, const FGameplayTag, Tag, bool, TagAdded, int32, Count, const FGameplayTag, TriggerTag);
 
 UENUM(BlueprintType)
 enum class EAttachmentComponentSocket : uint8

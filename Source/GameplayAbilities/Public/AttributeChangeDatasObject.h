@@ -18,6 +18,6 @@ public:
 
 	UAttributeChangeDatasObject();
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Datas")
 		AActor* Instigator = nullptr;
 };

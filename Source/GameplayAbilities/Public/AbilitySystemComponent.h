@@ -1733,7 +1733,7 @@ protected:
 	TMap<FGameplayTag, TArray<FGameplayAbilitySpecHandle > > OwnedTagTriggeredAbilities;
 
 	/** Callback that is called when an owned tag bound to an ability changes */
-	virtual void MonitoredTagChanged(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded);
+	virtual void MonitoredTagChanged(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation);
 
 	/** Returns true if the specified ability should be activated from an event in this network mode */
 	bool HasNetworkAuthorityToActivateTriggeredAbility(const FGameplayAbilitySpec &Spec) const;
@@ -1869,9 +1869,9 @@ protected:
 	
 public : 
 
-	virtual bool ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const;
+	virtual bool ShouldGenerateLastAttributeChangeDatas(const FGameplayAttribute Attribute) const;
 	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator);
-	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator);
+	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 		TSubclassOf<UAttributeChangeDatasObject> AttributeChangeDatasObjectClass = UAttributeChangeDatasObject::StaticClass();

@@ -95,6 +95,8 @@ struct GAMEPLAYABILITIES_API FAggregatorModChannel
 	 */
 	float EvaluateWithBase(float InlineBaseValue, const FAggregatorEvaluateParameters& Parameters) const;
 
+	float MultiplyMods(const TArray<FAggregatorMod>& InMods, const FAggregatorEvaluateParameters& Parameters) const;
+
 	/**
 	 * Evaluates a final value in reverse, attempting to determine a base value from the modifiers within the channel.
 	 * Certain conditions (such as the use of override mods) can prevent this from computing correctly, at which point false
@@ -168,6 +170,8 @@ struct GAMEPLAYABILITIES_API FAggregatorModChannel
 	 * @return Summed value of mods
 	 */
 	static float SumMods(const TArray<FAggregatorMod>& InMods, float Bias, const FAggregatorEvaluateParameters& Parameters);
+	//static float TindaSumMods(const TArray<FAggregatorMod>& InMods, float Bias, const FAggregatorEvaluateParameters& Parameters);
+	//static float GetSumModsUnderValue(const TArray<FAggregatorMod>& InMods, float Value, float& SumDivided);
 
 private:
 

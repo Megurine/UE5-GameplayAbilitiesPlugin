@@ -2293,7 +2293,7 @@ void UAbilitySystemComponent::RemoveGameplayEventTagContainerDelegate(const FGam
 	}
 }
 
-void UAbilitySystemComponent::MonitoredTagChanged(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded)
+void UAbilitySystemComponent::MonitoredTagChanged(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation)
 {
 	ABILITYLIST_SCOPE_LOCK();
 

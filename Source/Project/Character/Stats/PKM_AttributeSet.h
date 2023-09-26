@@ -30,10 +30,10 @@ struct FGameplayAttributeCouple
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		EPKM_Attributes attribute;
+		EPKM_Attributes attribute = EPKM_Attributes::HP;;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		EPKM_AttributesType type;
+		EPKM_AttributesType type = EPKM_AttributesType::VALUE;
 
 	FGameplayAttributeCouple() {}
 
@@ -52,16 +52,16 @@ struct FPKMAttributeCachedValues
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float HealthValue;
+		float HealthValue = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float HealthMax;
+		float HealthMax = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float EnergyValue;
+		float EnergyValue = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float EnergyMax;
+		float EnergyMax = 0.0f;
 
 	FPKMAttributeCachedValues() {}
 

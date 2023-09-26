@@ -37,7 +37,7 @@ void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> Ef
 	{
 		if (EffectClassFilter->IsChildOf(UPKM_GameplayEffect::StaticClass()))
 		{
-			TSubclassOf<UPKM_GameplayEffect> PKMEffectClassFilter = EffectClassFilter;
+			TSubclassOf<UPKM_GameplayEffect> PKMEffectClassFilter = { EffectClassFilter };
 			if (PKMEffectClassFilter)
 			{
 				EEffectWidgetVisibilityType WidgetVisibilityType = UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(PKMEffectClassFilter);

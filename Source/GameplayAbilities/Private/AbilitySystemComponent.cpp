@@ -602,7 +602,7 @@ FDelegateHandle UAbilitySystemComponent::RegisterAndCallGameplayTagEvent(FGamepl
 	const int32 TagCount = GetTagCount(Tag);
 	if (TagCount > 0)
 	{
-		Delegate.Execute(Tag, TagCount, Tag, true);
+		Delegate.Execute(Tag, TagCount, Tag, EOnGameplayEffectTagCountOperation::INTERNALCHECK);
 	}
 
 	return DelegateHandle;
@@ -2944,9 +2944,7 @@ const FMinimalReplicationTagCountMap& UAbilitySystemComponent::GetReplicatedLoos
 
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
-#undef LOCTEXT_NAMESPACE
-
-bool UAbilitySystemComponent::ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const
+bool UAbilitySystemComponent::ShouldGenerateLastAttributeChangeDatas(const FGameplayAttribute Attribute) const
 {
 	return true;
 }
@@ -2957,13 +2955,15 @@ void UAbilitySystemComponent::GenerateLastAttributeChangeDatas(AActor* Instigato
 	LastAttributeChangeDatasObject->Instigator = Instigator;
 }
 
-void UAbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator)
+void UAbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec)
 {
 	LastAttributeChangeDatasObject = NewObject<UAttributeChangeDatasObject>(this, AttributeChangeDatasObjectClass);
 	FGameplayEffectContextHandle SpecContext = Spec.GetContext();
 	LastAttributeChangeDatasObject->Instigator = SpecContext.GetInstigator(); //Can be nullptr
-	if (!LastAttributeChangeDatasObject->Instigator)
+	/*if (!LastAttributeChangeDatasObject->Instigator)
 	{
 		LastAttributeChangeDatasObject->Instigator = Instigator;
-	}
+	}*/
 }
+
+#undef LOCTEXT_NAMESPACE

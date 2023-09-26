@@ -3,6 +3,7 @@
 #include "PKM_AbilitySystemComponent.h"
 #include "GameplayAbilitieTest/Character/Stats/Effects/PKM_TimelineGameplayEffectComp.h"
 #include "GameplayAbilitieTest/Character/Stats/Effects/PKM_GameplayEffect.h"
+#include "Components/Widget.h"
 
 UPKM_AbilitySystemComponent::UPKM_AbilitySystemComponent()
 {
@@ -12,6 +13,16 @@ UPKM_AbilitySystemComponent::UPKM_AbilitySystemComponent()
 	AttributeChangeDatasObjectClass = UAttributeChangeDatasObject::StaticClass();
 }
 
+void UPKM_AbilitySystemComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (bInitTagsAndEffectsOnBeginPlay)
+	{
+		InitTagsAndEffects();
+	}
+}
+
 void UPKM_AbilitySystemComponent::Init()
 {
 	OnAnyGameplayEffectRemovedDelegate().AddUObject(this, &UPKM_AbilitySystemComponent::OnActiveGameplayEffectRemove);
@@ -19,6 +30,14 @@ void UPKM_AbilitySystemComponent::Init()
 	UDataTable* DataTableTemp = NewObject<UDataTable>();
 	pkmAttributes = Cast<UPKM_AttributeSet>(InitStats(UPKM_AttributeSet::StaticClass(), DataTableTemp));
 
+	if (!bInitTagsAndEffectsOnBeginPlay)
+	{
+		InitTagsAndEffects();
+	}
+}
+
+void UPKM_AbilitySystemComponent::InitTagsAndEffects()
+{
 	AddLooseGameplayTags(TagsAtInit);
 
 	for (TSubclassOf<UGameplayEffect> GameplayEffectClass : GameplayEffectsAtInit)
@@ -124,7 +143,7 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValue(EPKM_Attributes attribut
 	FGameplayAttribute attributeByEnum = GetAttributeByEnum(attribute, type);
 	if (attributeByEnum.IsValid())
 	{
-		if (ShouldGenerateLastAttributeChangeDatas(attributeByEnum.AttributeName))
+		if (ShouldGenerateLastAttributeChangeDatas(attributeByEnum))
 		{
 			GenerateLastAttributeChangeDatas(Instigator);
 		}
@@ -197,7 +216,7 @@ void UPKM_AbilitySystemComponent::SetAttributeBaseValueLimitWithMultiplyValueBef
 		FGameplayAttribute attributeByEnum = GetAttributeByEnum(attribute, type);
 		if (attributeByEnum.IsValid())
 		{
-			if (ShouldGenerateLastAttributeChangeDatas(attributeByEnum.AttributeName))
+			if (ShouldGenerateLastAttributeChangeDatas(attributeByEnum))
 			{
 				GenerateLastAttributeChangeDatas(Instigator);
 			}
@@ -405,9 +424,9 @@ FActiveGameplayEffectHandle UPKM_AbilitySystemComponent::ApplyGameplayEffectToTa
 	return FActiveGameplayEffectHandle();
 }
 
-bool UPKM_AbilitySystemComponent::ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const
+bool UPKM_AbilitySystemComponent::ShouldGenerateLastAttributeChangeDatas(const FGameplayAttribute Attribute) const
 {
-	if (AttributeName == "Hp")
+	if (Attribute.AttributeName == "Hp")
 	{
 		return true;
 	}
@@ -419,62 +438,104 @@ void UPKM_AbilitySystemComponent::GenerateLastAttributeChangeDatas(AActor* Insti
 	Super::GenerateLastAttributeChangeDatas(Instigator);
 }
 
-void UPKM_AbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator)
+void UPKM_AbilitySystemComponent::GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec)
 {
-	Super::GenerateLastAttributeChangeDatasWithSpec(Spec, Instigator);
+	Super::GenerateLastAttributeChangeDatasWithSpec(Spec);
 }
 
 void UPKM_AbilitySystemComponent::BindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate)
 {
-	FOnGameplayAttributeValueChange& AttributeValueChange = GetGameplayAttributeValueChangeDelegate(GetAttributeByEnum(attribute, type));
-	if(!AttributeValueChange.IsBoundToObject(this))
+	FGameplayAttribute Attribute = GetAttributeByEnum(attribute, type);
+	if (Attribute.IsValid())
 	{
-		AttributeValueChange.AddUObject(this, &UPKM_AbilitySystemComponent::OnAttributeValueChange);
-	}
+		FOnGameplayAttributeValueChange& AttributeValueChange = GetGameplayAttributeValueChangeDelegate(Attribute);
+		if (!AttributeValueChange.IsBoundToObject(this))
+		{
+			AttributeValueChange.AddUObject(this, &UPKM_AbilitySystemComponent::OnAttributeValueChange);
+		}
 
-	AttributeValueChangeDelegates.Add(GetAttributeByEnum(attribute, type), InDelegate);
+		AttributeValueChangeDelegates.Add(Attribute, InDelegate);
+	}
 }
 
 void UPKM_AbilitySystemComponent::UnBindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate)
 {
-	//Remove by attribute
-	AttributeValueChangeDelegates.Remove(GetAttributeByEnum(attribute, type), InDelegate);
+	FGameplayAttribute Attribute = GetAttributeByEnum(attribute, type);
+	if (Attribute.IsValid())
+	{
+		//Remove by attribute
+		if (AttributeValueChangeDelegates.Remove(Attribute, InDelegate) > 0)
+		{
+			AfterRemoveAttributeValueChange(Attribute);
+		}
+	}
+}
+
+void UPKM_AbilitySystemComponent::AfterRemoveAttributeValueChange(FGameplayAttribute Attribute)
+{
+	if (!AttributeValueChangeDelegates.Contains(Attribute))
+	{
+		FOnGameplayAttributeValueChange& AttributeValueChange = GetGameplayAttributeValueChangeDelegate(Attribute);
+		if (AttributeValueChange.IsBoundToObject(this))
+		{
+			AttributeValueChange.RemoveAll(this);
+		}
+	}
 }
 
 void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChangeData& Data)
 {
+	bool atLeastOneRemoved = false;
 	TArray<FAttributeValueChangeDelegate> Delegates;
 	AttributeValueChangeDelegates.MultiFind(Data.Attribute, Delegates);
 
 	for (size_t i = 0; i < Delegates.Num(); i++)
 	{
+		bool ValidBound = true;
+
 		if (Delegates[i].IsBound())
 		{
-			float newValue = Data.NewValue;
-			float oldValue = Data.OldValue;
+			ValidBound = CheckIsNotBoundedOnDeadWidget(Delegates[i].GetUObject(), false);
 
-			const FGameplayAttributeCouple* attributeCouple = pkmAttributes->AttributeCouple.Find(Data.Attribute.AttributeName);
-			if (attributeCouple)
+			if (ValidBound)
 			{
-				if (attributeCouple->type == EPKM_AttributesType::VALUE)
+				float newValue = Data.NewValue;
+				float oldValue = Data.OldValue;
+
+				const FGameplayAttributeCouple* attributeCouple = pkmAttributes->AttributeCouple.Find(Data.Attribute.AttributeName);
+				if (attributeCouple)
 				{
-					//newValue = ClampAttributeValue(attributeCouple->attribute, attributeCouple->type, newValue);
-					bool found;
-					newValue = GetGameplayAttributeValue(GetAttributeByEnum(attributeCouple->attribute, EPKM_AttributesType::VALUE), found);
-					//oldValue = ClampAttributeValue(attributeCouple->attribute, oldValue);
+					if (attributeCouple->type == EPKM_AttributesType::VALUE)
+					{
+						//newValue = ClampAttributeValue(attributeCouple->attribute, attributeCouple->type, newValue);
+						bool found;
+						newValue = GetGameplayAttributeValue(GetAttributeByEnum(attributeCouple->attribute, EPKM_AttributesType::VALUE), found);
+						//oldValue = ClampAttributeValue(attributeCouple->attribute, oldValue);
+					}
 				}
-			}
-			if (newValue != oldValue) //Optimization - Maybe remove this condition ?
-			{
-				Delegates[i].Execute(newValue, oldValue, Data.ChangeDatas);
+				if (newValue != oldValue) //Optimization - Maybe remove this condition ?
+				{
+					Delegates[i].Execute(newValue, oldValue, Data.ChangeDatas);
+				}
 			}
 		}
 		else
 		{
+			ValidBound = false;
+		}
+
+		if (!ValidBound)
+		{
 			Delegates[i].Clear();
 			Delegates.RemoveAt(i);
+			atLeastOneRemoved = true;
 			i--;
 		}
+	}
+
+	if (atLeastOneRemoved)
+	{
+		AfterRemoveAttributeValueChange(Data.Attribute);
 	}
 }
 
@@ -767,51 +828,69 @@ void UPKM_AbilitySystemComponent::RemoveOnGameplayTagEventDelegateHandle(FGamepl
 	}
 }
 
-void UPKM_AbilitySystemComponent::OnGameplayTagEventNewOrRemoved(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded)
+void UPKM_AbilitySystemComponent::OnGameplayTagEventNewOrRemoved(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation)
 {
 	//FString aaa = TriggerTag.ToString();
 	//UE_LOG(LogTemp, Log, TEXT("PKM_GAS OnGameplayTagEventNewOrRemoved : %s"), *aaa);
-	OnGameplayTagEvent(CallbackTag, NewCount, TriggerTag, TagAdded, EGameplayTagEventType::NewOrRemoved);
+	OnGameplayTagEvent(CallbackTag, NewCount, TriggerTag, TagOperation, EGameplayTagEventType::NewOrRemoved);
 }
 
-void UPKM_AbilitySystemComponent::OnGameplayTagEventAnyCountChange(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded)
+void UPKM_AbilitySystemComponent::OnGameplayTagEventAnyCountChange(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation)
 {
 	//FString aaa = TriggerTag.ToString();
 	//UE_LOG(LogTemp, Log, TEXT("PKM_GAS OnGameplayTagEventAnyCountChange : %s"), *aaa);
-	OnGameplayTagEvent(CallbackTag, NewCount, TriggerTag, TagAdded, EGameplayTagEventType::AnyCountChange);
+	OnGameplayTagEvent(CallbackTag, NewCount, TriggerTag, TagOperation, EGameplayTagEventType::AnyCountChange);
 }
 
-void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, EGameplayTagEventType::Type eventType)
+void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation, EGameplayTagEventType::Type eventType)
 {
 	bool atLeastOneRemoved = false;
 	for (size_t i = 0; i < OnGameplayTagEventDelegates.Num(); i++)
 	{
+		bool ValidBound = true;
+
 		if (OnGameplayTagEventDelegates[i].Delegate.IsBound())
 		{
-			bool valid = false;
-			if (OnGameplayTagEventDelegates[i].EventType == eventType)
+			ValidBound = CheckIsNotBoundedOnDeadWidget(OnGameplayTagEventDelegates[i].Delegate.GetUObject(), true);
+
+			if (ValidBound)
 			{
-				if (OnGameplayTagEventDelegates[i].Tag == CallbackTag)
+				//We'll see what to do with this condition in the future, if there isn't something useful triggered on InternalCheck. Megu
+				if (TagOperation != EOnGameplayEffectTagCountOperation::INTERNALCHECK)
 				{
-					valid = true;
-				}
-				else
-				{
-					if (OnGameplayTagEventDelegates[i].allowChildTag)
+					bool valid = false;
+
+					if (OnGameplayTagEventDelegates[i].EventType == eventType)
 					{
-						valid = CallbackTag.MatchesTag(OnGameplayTagEventDelegates[i].Tag);
+						if (OnGameplayTagEventDelegates[i].Tag == TriggerTag)
+						{
+							valid = true;
+						}
+						else
+						{
+							if (OnGameplayTagEventDelegates[i].allowChildTag)
+							{
+								valid = TriggerTag.MatchesTag(OnGameplayTagEventDelegates[i].Tag);
+							}
+						}
+					}
+					if (valid)
+					{
+						OnGameplayTagEventDelegates[i].Delegate.Execute(CallbackTag, (TagOperation == EOnGameplayEffectTagCountOperation::ADDED), NewCount, TriggerTag);
 					}
 				}
-			}
-			if (valid)
-			{
-				//FString bbb = TriggerTag.ToString();
-				//FString ccc = OnGameplayTagEventDelegates[i].Delegate.GetFunctionName().ToString();
-				//UE_LOG(LogTemp, Log, TEXT("PKM_GAS OnGameplayTagEventExecute : %s - %s - %s"), *bbb, *ccc, (eventType == EGameplayTagEventType::AnyCountChange ? TEXT("AnyCountChange") : TEXT("NewOrRemoved")));
-				OnGameplayTagEventDelegates[i].Delegate.Execute(CallbackTag, NewCount, TriggerTag, TagAdded);
+				/*else
+				{
+					ensure(false); //Ensure for Megu to understand when InternalCheck is used.
+				}*/
 			}
 		}
 		else
+		{
+			ValidBound = false;
+		}
+
+		if (!ValidBound)
 		{
 			OnGameplayTagEventDelegates[i].Delegate.Clear();
 			OnGameplayTagEventDelegates.RemoveAt(i);
@@ -823,6 +902,32 @@ void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag Callback
 	{
 		RemoveOnGameplayTagEventDelegateHandle(CallbackTag);
 	}
+}
+
+bool UPKM_AbilitySystemComponent::CheckIsNotBoundedOnDeadWidget(UObject* ObjectBound, bool CallForTag)
+{
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT
+	//Usefull check to force GC to remove the widget after being removed from parent and the unbinding has not been done.
+	//Set with WITH_EDITOR or UE_BUILD_DEVELOPMENT to optimize the game with UE_BUILD_SHIPPING.
+	UWidget* BoundedWidget = Cast<UWidget>(ObjectBound);
+	if (BoundedWidget)
+	{
+		if (!BoundedWidget->IsConstructed()) //return false after being removed from parent
+		{
+			//You've called BindFunctionToGameplayTagEvent in your widget, but forgot the unbind in its Destroy(). JeromeC
+			if (CallForTag)
+			{
+				ensureAlwaysMsgf(false, TEXT("Please call UnbindFunctionToGameplayTagEventForTag in widget (%s)'s Destroy()."), *BoundedWidget->GetFName().ToString());
+			}
+			else
+			{
+				ensureAlwaysMsgf(false, TEXT("Please call UnBindFunctionToAttributeValueChange in widget (%s)'s Destroy()."), *BoundedWidget->GetFName().ToString());
+			}
+			return false;
+		}
+	}
+#endif
+	return true;
 }
 
 void UPKM_AbilitySystemComponent::SetValueToOwnerMaterialInstances(const FName ParameterName, const FVector value)

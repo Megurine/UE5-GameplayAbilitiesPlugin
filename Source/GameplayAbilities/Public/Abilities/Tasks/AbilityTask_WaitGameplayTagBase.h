@@ -17,7 +17,7 @@ class GAMEPLAYABILITIES_API UAbilityTask_WaitGameplayTag : public UAbilityTask
 	virtual void Activate() override;
 
 	UFUNCTION()
-	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded);
+	virtual void GameplayTagCallback(const FGameplayTag Tag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation);
 	
 	void SetExternalTarget(AActor* Actor);
 

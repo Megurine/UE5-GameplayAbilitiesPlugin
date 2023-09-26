@@ -1724,7 +1724,7 @@ struct GAMEPLAYABILITIES_API FActiveGameplayEffectsContainer : public FFastArray
 
 	FOnGameplayAttributeValueChange& GetGameplayAttributeValueChangeDelegate(FGameplayAttribute Attribute);
 
-	void OnOwnerTagChange(FGameplayTag TagChange, int32 NewCount, FGameplayTag TriggerTagChange, bool TagAdded);
+	void OnOwnerTagChange(FGameplayTag TagChange, int32 NewCount, FGameplayTag TriggerTagChange, EOnGameplayEffectTagCountOperation TagOperation);
 
 	bool HasApplicationImmunityToSpec(const FGameplayEffectSpec& SpecToApply, const FActiveGameplayEffect*& OutGEThatProvidedImmunity) const;
 

@@ -100,39 +100,30 @@ public:
 	}
 };
 
-USTRUCT(BlueprintType)
-struct FFNameAndFGameplayTag
-{
-	GENERATED_USTRUCT_BODY()
-
-public:
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FName Name = "";
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FGameplayTag Tag;
-
-	FFNameAndFGameplayTag() {}
-
-	FFNameAndFGameplayTag(FName _Name, FGameplayTag _Tag)
-	{
-		Name = _Name;
-		Tag = _Tag;
-	}
-};
-
 UCLASS(BlueprintType, Blueprintable, ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GAMEPLAYABILITIETEST_API UPKM_AbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()
-	
+
+protected:
+
+	virtual void BeginPlay() override;
+
 public :
 	
 	UPKM_AbilitySystemComponent();
 
 	UFUNCTION(BlueprintCallable)
 		void Init();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
+		bool bInitTagsAndEffectsOnBeginPlay = false;
+
+private:
+
+	void InitTagsAndEffects();
+
+public:
 
 	const UPKM_AttributeSet* pkmAttributes;
 
@@ -192,13 +183,13 @@ public :
 	UFUNCTION(BlueprintCallable, Category = GameplayEffects)
 		FActiveGameplayEffectHandle ApplyGameplayEffectToTargetWithTagMagnitudes(TSubclassOf<UGameplayEffect> GameplayEffectClass, UAbilitySystemComponent* Target, float Level, FGameplayEffectContextHandle EffectContext, TMap<FGameplayTag, float> TagMagnitudes);
 
-	virtual bool ShouldGenerateLastAttributeChangeDatas(const FString& AttributeName) const override;
-	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator) override;
-	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec, AActor* Instigator) override;
-
 #pragma region AttributeValueChange
 
-	TMultiMap<FGameplayAttribute, FAttributeValueChangeDelegate> AttributeValueChangeDelegates;
+public:
+
+	virtual bool ShouldGenerateLastAttributeChangeDatas(const FGameplayAttribute Attribute) const override;
+	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator) override;
+	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec) override;
 
 	UFUNCTION(BlueprintCallable)
 		void BindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate);
@@ -206,26 +197,40 @@ public :
 	UFUNCTION(BlueprintCallable)
 		void UnBindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate);
 
+private : 
+
+	TMultiMap<FGameplayAttribute, FAttributeValueChangeDelegate> AttributeValueChangeDelegates;
+
+	void AfterRemoveAttributeValueChange(FGameplayAttribute Attribute);
 	void OnAttributeValueChange(const FOnAttributeChangeData& Data);
 
 #pragma endregion AttributeValueChange
 
 #pragma region ActiveGameplayEffectAdded
 
+public :
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
 		TArray<TSubclassOf<UGameplayEffect>> GameplayEffectsAtInit;
 
-	TArray<FGameplayEffectClassFilter> OnActiveGameplayEffectAddedDelegates;
-	FDelegateHandle OnActiveGameplayEffectAddedDelegateHandle;
-
+	/** Bind a BP function delegate to the ASC effect events */
 	UFUNCTION(BlueprintCallable)
 		void BindFunctionToOnActiveGameplayEffectAdded(FGameplayEffectAddedDelegate InDelegate, TSubclassOf<UGameplayEffect> EffectClassFilter = nullptr, bool allowChildClass = true);
 
+	/** Unbind a BP function delegate to the ASC effect events */
 	UFUNCTION(BlueprintCallable)
 		void UnBindFunctionToOnActiveGameplayEffectAdded(FGameplayEffectAddedDelegate InDelegate);
 
+	/** Unbind a BP function delegate to the ASC effect events */
 	UFUNCTION(BlueprintCallable)
 		void UnBindFunctionToOnActiveGameplayEffectAddedForObject(const UObject* _Object);
+
+	UPKM_GameplayEffectActorComponent* AddGameplayEffectActorComponent(TSubclassOf<UPKM_GameplayEffectActorComponent> GameplayEffectActorComponentClass, FActiveGameplayEffectHandle handle);
+
+private: 
+
+	TArray<FGameplayEffectClassFilter> OnActiveGameplayEffectAddedDelegates;
+	FDelegateHandle OnActiveGameplayEffectAddedDelegateHandle;
 
 	void RemoveOnActiveGameplayEffectAddedDelegateHandle();
 
@@ -236,33 +241,42 @@ public :
 
 	FActiveGameplayEffectHandle ApplyGameplayEffectSpecToSelf(const FGameplayEffectSpec& GameplayEffect, FPredictionKey PredictionKey = FPredictionKey()) override;
 
-	UPKM_GameplayEffectActorComponent* AddGameplayEffectActorComponent(TSubclassOf<UPKM_GameplayEffectActorComponent> GameplayEffectActorComponentClass, FActiveGameplayEffectHandle handle);
-
 #pragma endregion ActiveGameplayEffectAdded
 
 #pragma region Tags
 
+public : 
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
 		FGameplayTagContainer TagsAtInit;
+
+	/** Bind a BP function delegate to the ASC tag events */
+	UFUNCTION(BlueprintCallable, Category = "Tags")
+		void BindFunctionToGameplayTagEvent(FOnGameplayTagChanged Delegate, FGameplayTag Tag, bool allowChildTag = false, EGameplayTagEventType::Type eventType = EGameplayTagEventType::NewOrRemoved);
+
+	/** Unbind a BP function delegate to the ASC tag events */
+	UFUNCTION(BlueprintCallable, Category = "Tags")
+		void UnbindFunctionToGameplayTagEventForTag(FOnGameplayTagChanged Delegate, FGameplayTag Tag, bool checkTag = false);
+
+private : 
 
 	TArray<FGameplayTagEventStruct> OnGameplayTagEventDelegates;
 	TMap<FRegisterGameplayTagEventStruct, FDelegateHandle> OnGameplayTagEventDelegateHandles;
 
-	UFUNCTION(BlueprintCallable)
-		void BindFunctionToGameplayTagEvent(FOnGameplayTagChanged Delegate, FGameplayTag Tag, bool allowChildTag = false, EGameplayTagEventType::Type eventType = EGameplayTagEventType::NewOrRemoved);
-
-	UFUNCTION(BlueprintCallable)
-		void UnbindFunctionToGameplayTagEventForTag(FOnGameplayTagChanged Delegate, FGameplayTag Tag, bool checkTag = false);
-
+	/** Internaly remove the */
 	void RemoveOnGameplayTagEventDelegateHandle(FGameplayTag Tag);
 
-	void OnGameplayTagEventNewOrRemoved(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded);
-	void OnGameplayTagEventAnyCountChange(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded);
-	void OnGameplayTagEvent(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, bool TagAdded, EGameplayTagEventType::Type eventType);
+	void OnGameplayTagEventNewOrRemoved(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation);
+	void OnGameplayTagEventAnyCountChange(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation);
+	void OnGameplayTagEvent(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation, EGameplayTagEventType::Type eventType);
+
+	bool CheckIsNotBoundedOnDeadWidget(UObject* ObjectBound, bool CallForTag);
 
 #pragma endregion Tags
 
 #pragma region Color
+
+public :
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Color")
 		FName ColorParameterNameTimelineGameplayEffectComp;
@@ -276,8 +290,6 @@ public :
 	void ComputeTimelineGameplayEffectCompColors();
 
 	TArray<UPKM_TimelineGameplayEffectComp*> TimelineGameplayEffectCompColor;
-
-private:
 
 	int32 TimelineGameplayEffectCompColorCountCached = 0;
 
