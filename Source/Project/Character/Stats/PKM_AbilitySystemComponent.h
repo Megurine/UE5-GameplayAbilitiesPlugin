@@ -100,6 +100,28 @@ public:
 	}
 };
 
+USTRUCT(BlueprintType)
+struct FFNameAndFGameplayTag
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FName Name = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FGameplayTag Tag;
+
+	FFNameAndFGameplayTag() {}
+
+	FFNameAndFGameplayTag(FName _Name, FGameplayTag _Tag)
+	{
+		Name = _Name;
+		Tag = _Tag;
+	}
+};
+
 UCLASS(BlueprintType, Blueprintable, ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class GAMEPLAYABILITIETEST_API UPKM_AbilitySystemComponent : public UAbilitySystemComponent
 {
