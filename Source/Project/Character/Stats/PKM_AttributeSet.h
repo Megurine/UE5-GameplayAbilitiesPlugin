@@ -30,7 +30,7 @@ struct FGameplayAttributeCouple
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		EPKM_Attributes attribute = EPKM_Attributes::HP;;
+		EPKM_Attributes attribute = EPKM_Attributes::HP;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		EPKM_AttributesType type = EPKM_AttributesType::VALUE;

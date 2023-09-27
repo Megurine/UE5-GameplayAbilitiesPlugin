@@ -84,21 +84,18 @@ float FAggregatorModChannel::EvaluateWithBase(float InlineBaseValue, const FAggr
 		return bestOverrideEvaluatedMagnitude;
 	}
 
-	float Additive = SumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
-	float Multiplicitive = SumMods(Mods[EGameplayModOp::Multiplicitive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Multiplicitive), Parameters);
-	float Division = SumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters);
-
-	/*float SumMultiplicitiveUnder1Divided = 0.0f;
+	float SumMultiplicitiveUnder1Divided = 0.0f;
 	float SumMultiplicitiveUnder1 = GetSumModsUnderValue(Mods[EGameplayModOp::Multiplicitive], 1.0f, SumMultiplicitiveUnder1Divided);
 	float SumDivisionUnder1Divided = 0.0f;
 	float SumDivisionUnder1 = GetSumModsUnderValue(Mods[EGameplayModOp::Division], 1.0f, SumDivisionUnder1Divided);
 
-	float Additive = TindaSumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
+	//float Additive = TindaSumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
 	//float Multiplicitive = TindaSumMods(Mods[EGameplayModOp::Multiplicitive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Multiplicitive), Parameters) - SumMultiplicitiveUnder1 + SumDivisionUnder1Divided;
 	//float Division = TindaSumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters) - SumDivisionUnder1 + SumMultiplicitiveUnder1Divided;
 	
-	float Multiplicitive = MultiplyMods(Mods[EGameplayModOp::Multiplicitive], Parameters);
-	float Division = MultiplyMods(Mods[EGameplayModOp::Division], Parameters);*/
+	float Additive = SumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
+	float Multiplicitive = SumMods(Mods[EGameplayModOp::Multiplicitive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Multiplicitive), Parameters);
+	float Division = SumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters);
 
 	if (FMath::IsNearlyZero(Division))
 	{
@@ -138,18 +135,22 @@ bool FAggregatorModChannel::ReverseEvaluate(float FinalValue, const FAggregatorE
 		}
 	}
 
-	float SumMultiplicitiveUnder1Divided = 0.0f;
+	/*float SumMultiplicitiveUnder1Divided = 0.0f;
 	float SumMultiplicitiveUnder1 = GetSumModsUnderValue(Mods[EGameplayModOp::Multiplicitive], 1.0f, SumMultiplicitiveUnder1Divided);
 	float SumDivisionUnder1Divided = 0.0f;
 	float SumDivisionUnder1 = GetSumModsUnderValue(Mods[EGameplayModOp::Division], 1.0f, SumDivisionUnder1Divided);
 
 	float Additive = TindaSumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
 	float Multiplicitive = TindaSumMods(Mods[EGameplayModOp::Multiplicitive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Multiplicitive), Parameters) - SumMultiplicitiveUnder1 + SumDivisionUnder1Divided;
-	float Division = TindaSumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters) - SumDivisionUnder1 + SumMultiplicitiveUnder1Divided;
+	float Division = TindaSumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters) - SumDivisionUnder1 + SumMultiplicitiveUnder1Divided;*/
 
 	/*float Additive = SumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
 	float Multiplicitive = SumMods(Mods[EGameplayModOp::Multiplicitive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Multiplicitive), Parameters);
 	float Division = SumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters);*/
+
+	float Additive = SumMods(Mods[EGameplayModOp::Additive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Additive), Parameters);
+	float Multiplicitive = SumMods(Mods[EGameplayModOp::Multiplicitive], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Multiplicitive), Parameters);
+	float Division = SumMods(Mods[EGameplayModOp::Division], GameplayEffectUtilities::GetModifierBiasByModifierOp(EGameplayModOp::Division), Parameters);
 
 	if (FMath::IsNearlyZero(Division))
 	{
