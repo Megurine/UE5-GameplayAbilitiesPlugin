@@ -58,3 +58,12 @@ EEffectWidgetVisibilityType UPKM_GameplayEffect::GetClassVariableWidgetVisibilit
 	}
 	return EEffectWidgetVisibilityType::INVISIBLE;
 };
+
+EGameplayEffectDurationType UPKM_GameplayEffect::GetClassVariableDurationPolicy(TSubclassOf<UPKM_GameplayEffect> _effectClass)
+{
+	if (UPKM_GameplayEffect* DefaultActor = Cast<UPKM_GameplayEffect>(_effectClass->GetDefaultObject(true)))
+	{
+		return DefaultActor->DurationPolicy;
+	}
+	return EGameplayEffectDurationType::Instant;
+};

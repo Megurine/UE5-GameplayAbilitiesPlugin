@@ -55,4 +55,7 @@ public :
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 		static EEffectWidgetVisibilityType GetClassVariableWidgetVisibilityType(TSubclassOf<UPKM_GameplayEffect> _effectClass);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+		static EGameplayEffectDurationType GetClassVariableDurationPolicy(TSubclassOf<UPKM_GameplayEffect> _effectClass);
 };

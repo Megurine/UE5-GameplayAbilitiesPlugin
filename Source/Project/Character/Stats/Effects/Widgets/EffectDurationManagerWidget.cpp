@@ -40,32 +40,37 @@ void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> Ef
 			TSubclassOf<UPKM_GameplayEffect> PKMEffectClassFilter = { EffectClassFilter };
 			if (PKMEffectClassFilter)
 			{
-				EEffectWidgetVisibilityType WidgetVisibilityType = UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(PKMEffectClassFilter);
-				if (WidgetVisibilityType != EEffectWidgetVisibilityType::INVISIBLE)
+				//check instant
+				EGameplayEffectDurationType DurationPolicy = UPKM_GameplayEffect::GetClassVariableDurationPolicy(PKMEffectClassFilter);
+				if (DurationPolicy != EGameplayEffectDurationType::Instant)
 				{
-					TSoftObjectPtr<UTexture> Icon = UPKM_GameplayEffect::GetClassVariableIcon(PKMEffectClassFilter);
-
-					float StartEffectTime;
-					float Duration;
-					AbilitySystemComponent->GetGameplayEffectStartTimeAndDuration(handle, StartEffectTime, Duration);
-
-					if (EffectDurationWidgetClass)
+					EEffectWidgetVisibilityType WidgetVisibilityType = UPKM_GameplayEffect::GetClassVariableWidgetVisibilityType(PKMEffectClassFilter);
+					if (WidgetVisibilityType != EEffectWidgetVisibilityType::INVISIBLE)
 					{
-						//this->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("MyButtonName"));
-						UEffectDurationWidget* widgetCreated = CreateWidget<UEffectDurationWidget>(GetWorld(), EffectDurationWidgetClass);
+						TSoftObjectPtr<UTexture> Icon = UPKM_GameplayEffect::GetClassVariableIcon(PKMEffectClassFilter);
 
-						EffectDurationWidgets.Add(handle.Handle, widgetCreated);
+						float StartEffectTime;
+						float Duration;
+						AbilitySystemComponent->GetGameplayEffectStartTimeAndDuration(handle, StartEffectTime, Duration);
 
-						AddEffectDurationWidgetToParentWidget(widgetCreated, WidgetVisibilityType);
-
-						widgetCreated->Init(Icon, Duration, StartEffectTime);
-
-						if (EffectDurationWidgets.Num() == 1)
+						if (EffectDurationWidgetClass)
 						{
-							UWorld* worldRef = GetWorld();
-							if (worldRef)
+							//this->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("MyButtonName"));
+							UEffectDurationWidget* widgetCreated = CreateWidget<UEffectDurationWidget>(GetWorld(), EffectDurationWidgetClass);
+
+							EffectDurationWidgets.Add(handle.Handle, widgetCreated);
+
+							AddEffectDurationWidgetToParentWidget(widgetCreated, WidgetVisibilityType);
+
+							widgetCreated->Init(Icon, Duration, StartEffectTime);
+
+							if (EffectDurationWidgets.Num() == 1)
 							{
-								worldRef->GetTimerManager().SetTimer(TimerHandleUpdate, TimerDelegateUpdate, UpdateFrequency, true);
+								UWorld* worldRef = GetWorld();
+								if (worldRef)
+								{
+									worldRef->GetTimerManager().SetTimer(TimerHandleUpdate, TimerDelegateUpdate, UpdateFrequency, true);
+								}
 							}
 						}
 					}
@@ -78,14 +83,17 @@ void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> Ef
 		UEffectDurationWidget* widgetRemoved;
 		if (EffectDurationWidgets.RemoveAndCopyValue(handle.Handle, widgetRemoved))
 		{
-			widgetRemoved->RemoveFromParent();
-
-			if (EffectDurationWidgets.Num() == 0)
+			if (widgetRemoved)
 			{
-				UWorld* worldRef = GetWorld();
-				if (worldRef)
+				widgetRemoved->RemoveFromParent();
+
+				if (EffectDurationWidgets.Num() == 0)
 				{
-					worldRef->GetTimerManager().ClearTimer(TimerHandleUpdate);
+					UWorld* worldRef = GetWorld();
+					if (worldRef)
+					{
+						worldRef->GetTimerManager().ClearTimer(TimerHandleUpdate);
+					}
 				}
 			}
 		}
