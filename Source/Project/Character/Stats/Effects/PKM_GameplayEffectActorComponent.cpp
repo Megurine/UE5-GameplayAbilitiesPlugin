@@ -20,7 +20,8 @@ void UPKM_GameplayEffectActorComponent::Init(UPKM_AbilitySystemComponent* _PKMAb
 
 	if (ParticleSettingsStart.ParticlesTemplate)
 	{
-		FXComponentStart = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), TEXT("StartFX"), ParticleSettingsStart);
+		FString NameFX = "StartFX" + GetName();
+		FXComponentStart = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), FName(*NameFX), ParticleSettingsStart);
 	}
 
 	ProcessCameraShake(ShakeClassStart, ShakeSocketStart, ShakeRadiusStart);
@@ -53,7 +54,8 @@ void UPKM_GameplayEffectActorComponent::PeriodicExecute()
 
 	if (ParticleSettingsPeriodic.ParticlesTemplate)
 	{
-		FXComponentPeriodic = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), TEXT("PeriodicFX"), ParticleSettingsPeriodic);
+		FString NameFX = "PeriodicFX" + GetName();
+		FXComponentPeriodic = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), FName(*NameFX), ParticleSettingsPeriodic);
 	}
 
 	ProcessCameraShake(ShakeClassPeriodic, ShakeSocketPeriodic, ShakeRadiusPeriodic);
@@ -80,7 +82,8 @@ void UPKM_GameplayEffectActorComponent::EndPlay(const EEndPlayReason::Type EndPl
 
 	if (ParticleSettingsEnd.ParticlesTemplate)
 	{
-		UFXSystemComponent* FXComponentEnd = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), TEXT("EndFX"), ParticleSettingsEnd);
+		FString NameFX = "EndFX" + GetName();
+		UFXSystemComponent* FXComponentEnd = UFXBlueprintFunctionLibrary::CreatePKMFXComponent(GetOwner(), FName(*NameFX), ParticleSettingsEnd);
 		UFXBlueprintFunctionLibrary::AskDestroyAfterDeactivateDelayed(FXComponentEnd, DeactiveParticleDelayEndOnEnd, DestroyParticleDelayEndOnEnd);
 	}
 
