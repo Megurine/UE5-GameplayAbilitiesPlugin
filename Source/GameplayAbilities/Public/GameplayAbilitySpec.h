@@ -8,69 +8,21 @@
 #include "Templates/SubclassOf.h"
 #include "Engine/NetSerialization.h"
 #include "AttributeSet.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayPrediction.h"
+#include "ScalableFloat.h"
 #include "GameplayAbilitySpec.generated.h"
 
 class UAbilitySystemComponent;
 class UGameplayAbility;
-
-/**
- *	This file exists in addition so that GameplayEffect.h can use FGameplayAbilitySpec without having to include GameplayAbilityTypes.h which has depancies on
- *	GameplayEffect.h
- */
-
-/** Handle that points to a specific granted ability. These are globally unique */
-USTRUCT(BlueprintType)
-struct FGameplayAbilitySpecHandle
-{
-	GENERATED_USTRUCT_BODY()
-
-	FGameplayAbilitySpecHandle()
-		: Handle(INDEX_NONE)
-	{
-	}
-
-	/** True if GenerateNewHandle was called on this handle */
-	bool IsValid() const
-	{
-		return Handle != INDEX_NONE;
-	}
-
-	/** Sets this to a valid handle */
-	void GenerateNewHandle();
-
-	bool operator==(const FGameplayAbilitySpecHandle& Other) const
-	{
-		return Handle == Other.Handle;
-	}
-
-	bool operator!=(const FGameplayAbilitySpecHandle& Other) const
-	{
-		return Handle != Other.Handle;
-	}
-
-	friend uint32 GetTypeHash(const FGameplayAbilitySpecHandle& SpecHandle)
-	{
-		return ::GetTypeHash(SpecHandle.Handle);
-	}
-
-	FString ToString() const
-	{
-		return IsValid() ? FString::FromInt(Handle) : TEXT("Invalid");
-	}
-
-private:
-
-	UPROPERTY()
-	int32 Handle;
-};
+struct FGameplayEventData;
 
 /** Describes the status of activating this ability, this is updated as prediction is handled */
 UENUM(BlueprintType)
 namespace EGameplayAbilityActivationMode
 {
-	enum Type
+	enum Type : int
 	{
 		/** We are the authority activating this ability */
 		Authority,
@@ -133,7 +85,7 @@ struct FGameplayAbilitySpecDef
 
 	/** What granted this spec, not replicated or settable in editor */
 	UPROPERTY(NotReplicated)
-	UObject* SourceObject;
+	TWeakObjectPtr<UObject> SourceObject;
 
 	/** SetbyCaller Magnitudes that were passed in to this ability by a GE (GE's that grant abilities) */
 	TMap<FGameplayTag, float>	SetByCallerTagMagnitudes;
@@ -141,6 +93,9 @@ struct FGameplayAbilitySpecDef
 	/** This handle can be set if the SpecDef is used to create a real FGameplaybilitySpec */
 	UPROPERTY()
 	FGameplayAbilitySpecHandle	AssignedHandle;
+
+	bool operator==(const FGameplayAbilitySpecDef& Other) const;
+	bool operator!=(const FGameplayAbilitySpecDef& Other) const;
 };
 
 /**
@@ -163,13 +118,7 @@ struct GAMEPLAYABILITIES_API FGameplayAbilityActivationInfo
 	{
 	}
 
-	FGameplayAbilityActivationInfo(AActor* InActor)
-		: bCanBeEndedByOtherInstance(false)	
-	{
-		// On Init, we are either Authority or NonAuthority. We haven't been given a PredictionKey and we haven't been confirmed.
-		// NonAuthority essentially means 'I'm not sure what how I'm going to do this yet'.
-		ActivationMode = (InActor->GetLocalRole() == ROLE_Authority ? EGameplayAbilityActivationMode::Authority : EGameplayAbilityActivationMode::NonAuthority);
-	}
+	FGameplayAbilityActivationInfo(AActor* InActor);
 
 	FGameplayAbilityActivationInfo(EGameplayAbilityActivationMode::Type InType)
 		: ActivationMode(InType)
@@ -217,6 +166,14 @@ struct GAMEPLAYABILITIES_API FGameplayAbilitySpec : public FFastArraySerializerI
 {
 	GENERATED_USTRUCT_BODY()
 
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	FGameplayAbilitySpec(const FGameplayAbilitySpec&) = default;
+	FGameplayAbilitySpec(FGameplayAbilitySpec&&) = default;
+	FGameplayAbilitySpec& operator=(const FGameplayAbilitySpec&) = default;
+	FGameplayAbilitySpec& operator=(FGameplayAbilitySpec&&) = default;
+	~FGameplayAbilitySpec() = default;
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
 	FGameplayAbilitySpec()
 		: Ability(nullptr), Level(1), InputID(INDEX_NONE), SourceObject(nullptr), ActiveCount(0), InputPressed(false), RemoveAfterActivation(false), PendingRemove(false), bActivateOnce(false)
 	{ }
@@ -236,7 +193,7 @@ struct GAMEPLAYABILITIES_API FGameplayAbilitySpec : public FFastArraySerializerI
 	
 	/** Ability of the spec (Always the CDO. This should be const but too many things modify it currently) */
 	UPROPERTY()
-	UGameplayAbility* Ability;
+	TObjectPtr<UGameplayAbility> Ability;
 	
 	/** Level of Ability */
 	UPROPERTY()
@@ -248,7 +205,7 @@ struct GAMEPLAYABILITIES_API FGameplayAbilitySpec : public FFastArraySerializerI
 
 	/** Object this ability was created from, can be an actor or static object. Useful to bind an ability to a gameplay object */
 	UPROPERTY()
-	UObject* SourceObject;
+	TWeakObjectPtr<UObject> SourceObject;
 
 	/** A count of the number of times this ability has been activated minus the number of times it has been ended. For instanced abilities this will be the number of currently active instances. Can't replicate until prediction accurately handles this.*/
 	UPROPERTY(NotReplicated)
@@ -270,6 +227,9 @@ struct GAMEPLAYABILITIES_API FGameplayAbilitySpec : public FFastArraySerializerI
 	UPROPERTY(NotReplicated)
 	uint8 bActivateOnce : 1;
 
+	/** Cached GameplayEventData if this ability was pending for add and activate due to scope lock */
+	TSharedPtr<FGameplayEventData> GameplayEventData = nullptr;
+
 	/** Activation state of this ability. This is not replicated since it needs to be overwritten locally on clients during prediction. */
 	UPROPERTY(NotReplicated)
 	FGameplayAbilityActivationInfo	ActivationInfo;
@@ -280,13 +240,16 @@ struct GAMEPLAYABILITIES_API FGameplayAbilitySpec : public FFastArraySerializerI
 
 	/** Non replicating instances of this ability. */
 	UPROPERTY(NotReplicated)
-	TArray<UGameplayAbility*> NonReplicatedInstances;
+	TArray<TObjectPtr<UGameplayAbility>> NonReplicatedInstances;
 
 	/** Replicated instances of this ability.. */
 	UPROPERTY()
-	TArray<UGameplayAbility*> ReplicatedInstances;
+	TArray<TObjectPtr<UGameplayAbility>> ReplicatedInstances;
 
-	/** Handle to GE that granted us (usually invalid) */
+	/**
+	 * Handle to GE that granted us (usually invalid). FActiveGameplayEffectHandles are not synced across the network and this is valid only on Authority.
+	 * If you need FGameplayAbilitySpec -> FActiveGameplayEffectHandle, then use AbilitySystemComponent::FindActiveGameplayEffectHandle.
+	 */
 	UPROPERTY(NotReplicated)
 	FActiveGameplayEffectHandle	GameplayEffectHandle;
 
@@ -333,8 +296,8 @@ struct GAMEPLAYABILITIES_API FGameplayAbilitySpecContainer : public FFastArraySe
 	TArray<FGameplayAbilitySpec> Items;
 
 	/** Component that owns this list */
-	UPROPERTY()
-	UAbilitySystemComponent* Owner;
+	UPROPERTY(NotReplicated)
+	TObjectPtr<UAbilitySystemComponent> Owner;
 
 	/** Initializes Owner variable */
 	void RegisterWithOwner(UAbilitySystemComponent* Owner);

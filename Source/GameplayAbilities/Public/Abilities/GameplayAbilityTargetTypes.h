@@ -3,25 +3,30 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/HitResult.h"
 #include "UObject/ObjectMacros.h"
 #include "UObject/Class.h"
 #include "Engine/NetSerialization.h"
 #include "Engine/EngineTypes.h"
+#include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayPrediction.h"
+#if UE_ENABLE_INCLUDE_ORDER_DEPRECATED_IN_5_1
 #include "Components/MeshComponent.h"
+#endif
 #include "GameplayAbilityTargetTypes.generated.h"
 
 class UGameplayAbility;
 class UGameplayEffect;
+class UMeshComponent;
 struct FGameplayEffectSpec;
 
 UENUM(BlueprintType)
 namespace EGameplayTargetingConfirmation
 {
 	/** Describes how the targeting information is confirmed */
-	enum Type
+	enum Type : int
 	{
 		/** The targeting happens instantly without special logic or user input deciding when to 'fire' */
 		Instant,
@@ -77,9 +82,6 @@ struct GAMEPLAYABILITIES_API FGameplayAbilityTargetData
 
 	/** Modifies the context and adds this target data to the target data handle stored within */
 	virtual void AddTargetDataToContext(FGameplayEffectContextHandle& Context, bool bIncludeActorArray) const;
-
-	/** Modifies the cue parameters and adds this target data to the target data handle stored within */
-	virtual void AddTargetDataToGameplayCueParameters(FGameplayCueParameters& Parameters) const;
 
 	/** Returns all actors targeted, almost always overridden */
 	virtual TArray<TWeakObjectPtr<AActor>> GetActors() const
@@ -161,7 +163,7 @@ UENUM(BlueprintType)
 namespace EGameplayAbilityTargetingLocationType
 {
 	/** What type of location calculation to use when an ability asks for our transform */
-	enum Type
+	enum Type : int
 	{
 		/** We report an actual raw transform. This is also the final fallback if other methods fail */
 		LiteralTransform		UMETA(DisplayName = "Literal Transform"),
@@ -320,35 +322,7 @@ struct GAMEPLAYABILITIES_API FGameplayAbilityTargetingLocationInfo
 	}
 
 	/** Converts internal format into a literal world space transform */
-	FTransform GetTargetingTransform() const
-	{
-		//Return or calculate based on LocationType.
-		switch (LocationType)
-		{
-		case EGameplayAbilityTargetingLocationType::ActorTransform:
-			if (SourceActor)
-			{
-				return SourceActor->GetTransform();
-			}
-			break;
-		case EGameplayAbilityTargetingLocationType::SocketTransform:
-			if (SourceComponent)
-			{
-				// Bad socket name will just return component transform anyway, so we're safe
-				return SourceComponent->GetSocketTransform(SourceSocketName);
-			}
-			break;
-		case EGameplayAbilityTargetingLocationType::LiteralTransform:
-			return LiteralTransform;
-		default:
-			check(false);
-			break;
-		}
-
-		// It cannot get here
-		return FTransform::Identity;
-	}
-
+	FTransform GetTargetingTransform() const;
 	/** Initializes new target data and fills in with hit results */
 	FGameplayAbilityTargetDataHandle MakeTargetDataHandleFromHitResult(TWeakObjectPtr<UGameplayAbility> Ability, const FHitResult& HitResult) const;
 	FGameplayAbilityTargetDataHandle MakeTargetDataHandleFromHitResults(TWeakObjectPtr<UGameplayAbility> Ability, const TArray<FHitResult>& HitResults) const;
@@ -366,15 +340,15 @@ struct GAMEPLAYABILITIES_API FGameplayAbilityTargetingLocationInfo
 
 	/** A source actor is needed for Actor-based targeting, but not for Socket-based targeting. */
 	UPROPERTY(BlueprintReadWrite, meta = (ExposeOnSpawn = true), Category = Targeting)
-	AActor* SourceActor;
+	TObjectPtr<AActor> SourceActor;
 
 	/** Socket-based targeting requires a skeletal mesh component to check for the named socket. */
 	UPROPERTY(BlueprintReadWrite, meta = (ExposeOnSpawn = true), Category = Targeting)
-	UMeshComponent* SourceComponent;
+	TObjectPtr<UMeshComponent> SourceComponent;
 
 	/** Ability that will be using the targeting data */
 	UPROPERTY(BlueprintReadWrite, meta = (ExposeOnSpawn = true), Category = Targeting)
-	UGameplayAbility* SourceAbility;
+	TObjectPtr<UGameplayAbility> SourceAbility;
 
 	/** If SourceComponent is valid, this is the name of the socket transform that will be used. If no Socket is provided, SourceComponent's transform will be used. */
 	UPROPERTY(BlueprintReadWrite, meta = (ExposeOnSpawn = true), Category = Targeting)
@@ -429,6 +403,11 @@ struct GAMEPLAYABILITIES_API FGameplayAbilityTargetData_LocationInfo : public FG
 	virtual FVector GetEndPoint() const override
 	{
 		return TargetLocation.GetTargetingTransform().GetLocation();
+	}
+
+	virtual FTransform GetEndPointTransform() const override
+	{
+		return TargetLocation.GetTargetingTransform();
 	}
 
 	// -------------------------------------
@@ -634,7 +613,7 @@ struct GAMEPLAYABILITIES_API FGameplayAbilityTargetData_SingleTargetHit : public
 	UPROPERTY()
 	FHitResult	HitResult;
 
-	UPROPERTY()
+	UPROPERTY(NotReplicated)
 	bool bHitReplaced = false;
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
@@ -664,7 +643,7 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FAbilityTargetDataSetDelegate, const FGamep
 UENUM()
 namespace EAbilityGenericReplicatedEvent
 {
-	enum Type
+	enum Type : int
 	{	
 		/** A generic confirmation to commit the ability */
 		GenericConfirm = 0,

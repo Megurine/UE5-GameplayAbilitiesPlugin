@@ -81,15 +81,19 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameplayCueNotify", DisplayName = "HandleGameplayCue", meta=(ScriptName = "HandleGameplayCue"))
 	void K2_HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type EventType, const FGameplayCueParameters& Parameters);
 
+	/** Called when a GameplayCue is executed, this is used for instant effects or periodic ticks */
 	UFUNCTION(BlueprintNativeEvent, Category = "GameplayCueNotify")
 	bool OnExecute(AActor* MyTarget, const FGameplayCueParameters& Parameters);
 
+	/** Called when a GameplayCue with duration is first activated, this will only be called if the client witnessed the activation */
 	UFUNCTION(BlueprintNativeEvent, Category = "GameplayCueNotify")
 	bool OnActive(AActor* MyTarget, const FGameplayCueParameters& Parameters);
 
+	/** Called when a GameplayCue with duration is first seen as active, even if it wasn't actually just applied (Join in progress, etc) */
 	UFUNCTION(BlueprintNativeEvent, Category = "GameplayCueNotify")
 	bool WhileActive(AActor* MyTarget, const FGameplayCueParameters& Parameters);
 
+	/** Called when a GameplayCue with duration is removed */
 	UFUNCTION(BlueprintNativeEvent, Category = "GameplayCueNotify")
 	bool OnRemove(AActor* MyTarget, const FGameplayCueParameters& Parameters);
 
@@ -141,10 +145,19 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = GameplayCue)
 	int32 NumPreallocatedInstances;
 
-	FGCNotifyActorKey NotifyKey;
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	UE_DEPRECATED(5.3, "NotifyKey is deprecated and unused.  See comments in FGCNotifyActorKey")
+	FGCNotifyActorKey NotifyKey = {};
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	// Set when the GC actor is in the recycle queue (E.g., not active in world. This is to prevent rentrancy in the recyle code since multiple paths can lead the GC actor there)
 	bool bInRecycleQueue;
+
+	// Keep track of the Instigator so we can decide if this GameplayCueNotify is one we're searching for.
+	TWeakObjectPtr<AActor> CueInstigator;
+
+	// Keep track of the SourceObject so we can decide if this GameplayCueNotify is one we're searching for.
+	TWeakObjectPtr<const UObject> CueSourceObject;
 	
 protected:
 	FTimerHandle FinishTimerHandle;

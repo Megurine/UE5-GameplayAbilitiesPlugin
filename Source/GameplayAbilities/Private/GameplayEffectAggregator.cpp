@@ -4,6 +4,7 @@
 #include "UObject/UObjectHash.h"
 #include "UObject/UObjectIterator.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemLog.h"
 #include "AbilitySystemStats.h"
 
 void FAggregatorMod::UpdateQualifies(const FAggregatorEvaluateParameters& Parameters) const
@@ -63,7 +64,7 @@ float FAggregatorModChannel::EvaluateWithBase(float InlineBaseValue, const FAggr
 			return Mod.EvaluatedMagnitude;
 		}
 	}*/
-
+	
 	int32 bestOverridePriority = -1;
 	float bestOverrideEvaluatedMagnitude = 0.0f;
 	int32 numModsOverride = Mods[EGameplayModOp::Override].Num();
@@ -104,7 +105,7 @@ float FAggregatorModChannel::EvaluateWithBase(float InlineBaseValue, const FAggr
 		ABILITY_LOG(Warning, TEXT("Division summation was 0.0f in FAggregatorModChannel."));
 		Division = 1.f;
 	}
-
+	
 	//return ((InlineBaseValue + Additive) * Multiplicitive) / Division;
 
 	return ((InlineBaseValue + Additive) * Multiplicitive) / Division;
@@ -136,7 +137,7 @@ bool FAggregatorModChannel::ReverseEvaluate(float FinalValue, const FAggregatorE
 			return false;
 		}
 	}
-
+	
 	/*float SumMultiplicitiveUnder1Divided = 0.0f;
 	float SumMultiplicitiveUnder1 = GetSumModsUnderValue(Mods[EGameplayModOp::Multiplicitive], 1.0f, SumMultiplicitiveUnder1Divided);
 	float SumDivisionUnder1Divided = 0.0f;

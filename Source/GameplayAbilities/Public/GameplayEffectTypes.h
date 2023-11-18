@@ -2,16 +2,18 @@
 
 #pragma once
 
+#include "ActiveGameplayEffectHandle.h"
 #include "CoreMinimal.h"
+#include "GameplayEffectAttributeCaptureDefinition.h"
 #include "UObject/ObjectMacros.h"
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "Templates/SubclassOf.h"
 #include "Engine/NetSerialization.h"
+#include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
 #include "AttributeSet.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
-#include "AbilitySystemLog.h"
 #include "AttributeChangeDatasObject.h"
 #include "GameplayEffectTypes.generated.h"
 
@@ -29,6 +31,13 @@ class UGameplayAbility;
 struct FActiveGameplayEffect;
 struct FGameplayEffectModCallbackData;
 struct FGameplayEffectSpec;
+struct FHitResult;
+struct FMinimalReplicationTagCountMapForNetSerializer;
+namespace UE::Net
+{
+	struct FGameplayEffectContextHandleAccessorForNetSerializer;
+	class FMinimalReplicationTagCountMapReplicationFragment;
+}
 
 /** Wrappers to convert enum to string. These are fairly slow */
 GAMEPLAYABILITIES_API FString EGameplayModOpToString(int32 Type);
@@ -80,6 +89,11 @@ struct GAMEPLAYABILITIES_API FGameplayModEvaluationChannelSettings
 	static const FString ForceHideMetadataEnabledValue;
 #endif // #if WITH_EDITORONLY_DATA
 
+	void SetEvaluationChannel(EGameplayModEvaluationChannel NewChannel);
+
+	bool operator==(const FGameplayModEvaluationChannelSettings& Other) const;
+	bool operator!=(const FGameplayModEvaluationChannelSettings& Other) const;
+
 protected:
 
 	/** Channel the settings would prefer to use, if possible/valid */
@@ -95,7 +109,7 @@ UENUM(BlueprintType)
 namespace EGameplayModOp
 {
 	/** Defines the ways that mods will modify attributes. Numeric ones operate on the existing value, override ignores it */
-	enum Type
+	enum Type : int
 	{		
 		/** Numeric. */
 		Additive = 0		UMETA(DisplayName="Add"),
@@ -135,17 +149,6 @@ namespace GameplayEffectUtilities
 	GAMEPLAYABILITIES_API float ComputeStackedModifierMagnitude(float BaseComputedMagnitude, int32 StackCount, EGameplayModOp::Type ModOp);
 }
 
-
-/** Enumeration for options of where to capture gameplay attributes from for gameplay effects. */
-UENUM()
-enum class EGameplayEffectAttributeCaptureSource : uint8
-{
-	/** Source (caster) of the gameplay effect. */
-	Source,	
-	/** Target (recipient) of the gameplay effect. */
-	Target	
-};
-
 /** Enumeration for ways a single GameplayEffect asset can stack. */
 UENUM()
 enum class EGameplayEffectStackingType : uint8
@@ -159,88 +162,6 @@ enum class EGameplayEffectStackingType : uint8
 };
 
 
-/**
- * This handle is required for things outside of FActiveGameplayEffectsContainer to refer to a specific active GameplayEffect
- *	For example if a skill needs to create an active effect and then destroy that specific effect that it created, it has to do so
- *	through a handle. a pointer or index into the active list is not sufficient.
- */
-USTRUCT(BlueprintType)
-struct GAMEPLAYABILITIES_API FActiveGameplayEffectHandle
-{
-	GENERATED_USTRUCT_BODY()
-
-	FActiveGameplayEffectHandle()
-		: Handle(INDEX_NONE),
-		bPassedFiltersAndWasExecuted(false)
-	{
-
-	}
-
-	FActiveGameplayEffectHandle(int32 InHandle)
-		: Handle(InHandle),
-		bPassedFiltersAndWasExecuted(true)
-	{
-
-	}
-
-	/** True if this is tracking an active ongoing gameplay effect */
-	bool IsValid() const
-	{
-		return Handle != INDEX_NONE;
-	}
-
-	/** True if this applied a gameplay effect. This can be true when it is not valid if it applied an instant effect */
-	bool WasSuccessfullyApplied() const
-	{
-		return bPassedFiltersAndWasExecuted;
-	}
-
-	/** Creates a new handle, will be set to successfully applied */
-	static FActiveGameplayEffectHandle GenerateNewHandle(UAbilitySystemComponent* OwningComponent);
-
-	/** Resets the map that supports GetOwningAbilitySystemComponent */
-	static void ResetGlobalHandleMap();
-
-	/** Returns the ability system component that created this handle */
-	UAbilitySystemComponent* GetOwningAbilitySystemComponent();
-	const UAbilitySystemComponent* GetOwningAbilitySystemComponent() const;
-
-	/** Remove this from the GetOwningAbilitySystemComponent map */
-	void RemoveFromGlobalMap();
-
-	bool operator==(const FActiveGameplayEffectHandle& Other) const
-	{
-		return Handle == Other.Handle;
-	}
-
-	bool operator!=(const FActiveGameplayEffectHandle& Other) const
-	{
-		return Handle != Other.Handle;
-	}
-
-	friend uint32 GetTypeHash(const FActiveGameplayEffectHandle& InHandle)
-	{
-		return InHandle.Handle;
-	}
-
-	FString ToString() const
-	{
-		return FString::Printf(TEXT("%d"), Handle);
-	}
-
-	void Invalidate()
-	{
-		Handle = INDEX_NONE;
-	}
-
-	UPROPERTY(BlueprintReadWrite)
-		int32 Handle;
-
-private:
-
-	UPROPERTY()
-	bool bPassedFiltersAndWasExecuted;
-};
 
 
 /** Data that describes what happened in an attribute modification. This is passed to ability set callbacks */
@@ -293,58 +214,6 @@ struct FGameplayModifierEvaluatedData
 };
 
 
-/** Struct defining gameplay attribute capture options for gameplay effects */
-USTRUCT(BlueprintType)
-struct GAMEPLAYABILITIES_API FGameplayEffectAttributeCaptureDefinition
-{
-	GENERATED_USTRUCT_BODY()
-
-	FGameplayEffectAttributeCaptureDefinition()
-	{
-		AttributeSource = EGameplayEffectAttributeCaptureSource::Source;
-		bSnapshot = false;
-	}
-
-	FGameplayEffectAttributeCaptureDefinition(FGameplayAttribute InAttribute, EGameplayEffectAttributeCaptureSource InSource, bool InSnapshot)
-		: AttributeToCapture(InAttribute), AttributeSource(InSource), bSnapshot(InSnapshot)
-	{
-
-	}
-
-	/** Gameplay attribute to capture */
-	UPROPERTY(EditDefaultsOnly, Category=Capture)
-	FGameplayAttribute AttributeToCapture;
-
-	/** Source of the gameplay attribute */
-	UPROPERTY(EditDefaultsOnly, Category=Capture)
-	EGameplayEffectAttributeCaptureSource AttributeSource;
-
-	/** Whether the attribute should be snapshotted or not */
-	UPROPERTY(EditDefaultsOnly, Category=Capture)
-	bool bSnapshot;
-
-	/** Equality/Inequality operators */
-	bool operator==(const FGameplayEffectAttributeCaptureDefinition& Other) const;
-	bool operator!=(const FGameplayEffectAttributeCaptureDefinition& Other) const;
-
-	/**
-	 * Get type hash for the capture definition; Implemented to allow usage in TMap
-	 *
-	 * @param CaptureDef Capture definition to get the type hash of
-	 */
-	friend uint32 GetTypeHash(const FGameplayEffectAttributeCaptureDefinition& CaptureDef)
-	{
-		uint32 Hash = 0;
-		Hash = HashCombine(Hash, GetTypeHash(CaptureDef.AttributeToCapture));
-		Hash = HashCombine(Hash, GetTypeHash(static_cast<uint8>(CaptureDef.AttributeSource)));
-		Hash = HashCombine(Hash, GetTypeHash(CaptureDef.bSnapshot));
-		return Hash;
-	}
-
-	FString ToSimpleString() const;
-};
-
-
 /**
  * Data structure that stores an instigator and related data, such as positions and targets
  * Games can subclass this structure and add game-specific information
@@ -360,6 +229,8 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContext
 	, WorldOrigin(ForceInitToZero)
 	, bHasWorldOrigin(false)
 	, bReplicateSourceObject(false)
+	, bReplicateInstigator(false)
+	, bReplicateEffectCauser(false)
 	{
 	}
 
@@ -368,6 +239,8 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContext
 	, WorldOrigin(ForceInitToZero)
 	, bHasWorldOrigin(false)
 	, bReplicateSourceObject(false)
+	, bReplicateInstigator(false)
+	, bReplicateEffectCauser(false)
 	{
 		FGameplayEffectContext::AddInstigator(InInstigator, InEffectCauser);
 	}
@@ -376,7 +249,7 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContext
 	{
 	}
 
-	/** Returns the list of gameplay tags applicable to this effect, defaults to the owner's tags */
+	/** Returns the list of gameplay tags applicable to this effect, defaults to the owner's tags. SpecTagContainer remains untouched by default. */
 	virtual void GetOwnedGameplayTags(OUT FGameplayTagContainer& ActorTagContainer, OUT FGameplayTagContainer& SpecTagContainer) const;
 
 	/** Sets the instigator and effect causer. Instigator is who owns the ability that spawned this, EffectCauser is the actor that is the physical source of the effect, such as a weapon. They can be the same. */
@@ -419,6 +292,7 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContext
 	void SetEffectCauser(AActor* InEffectCauser)
 	{
 		EffectCauser = InEffectCauser;
+		bReplicateEffectCauser = CanActorReferenceBeReplicated(InEffectCauser);
 	}
 
 	/** Should always return the original instigator that started the whole chain. Subclasses can override what this does */
@@ -486,11 +360,7 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContext
 	}
 
 	/** Returns debug string */
-	virtual FString ToString() const
-	{
-		const AActor* InstigatorPtr = Instigator.Get();
-		return (InstigatorPtr ? InstigatorPtr->GetName() : FString(TEXT("NONE")));
-	}
+	virtual FString ToString() const;
 
 	/** Returns the actual struct used for serialization, subclasses must override this! */
 	virtual UScriptStruct* GetScriptStruct() const
@@ -521,6 +391,8 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContext
 	virtual bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 
 protected:
+	static bool CanActorReferenceBeReplicated(const AActor* Actor);
+
 	// The object pointers here have to be weak because contexts aren't necessarily tracked by GC in all cases
 
 	/** Instigator actor, the actor that owns the ability system component */
@@ -566,8 +438,16 @@ protected:
 	uint8 bHasWorldOrigin:1;
 
 	/** True if the SourceObject can be replicated. This bool is not replicated itself. */
-	UPROPERTY()
+	UPROPERTY(NotReplicated)
 	uint8 bReplicateSourceObject:1;
+	
+	/** True if the Instigator can be replicated. This bool is not replicated itself. */
+	UPROPERTY(NotReplicated)	
+	uint8 bReplicateInstigator:1;
+
+	/** True if the Instigator can be replicated. This bool is not replicated itself. */
+	UPROPERTY(NotReplicated)	
+	uint8 bReplicateEffectCauser:1;
 };
 
 template<>
@@ -647,7 +527,7 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContextHandle
 		}
 	}
 
-	/** Sets Abilit instance and CDO parameters on context */
+	/** Sets Ability instance and CDO parameters on context */
 	void SetAbility(const UGameplayAbility* InGameplayAbility)
 	{
 		if (IsValid())
@@ -796,7 +676,12 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContextHandle
 	/** Returns actor list, may be empty */
 	const TArray<TWeakObjectPtr<AActor>> GetActors()
 	{
-		return Data->GetActors();
+		if (IsValid())
+		{
+			return Data->GetActors();
+		}
+
+		return {};
 	}
 
 	/** Returns hit result, this can be null */
@@ -882,6 +767,8 @@ struct GAMEPLAYABILITIES_API FGameplayEffectContextHandle
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 
 private:
+	friend UE::Net::FGameplayEffectContextHandleAccessorForNetSerializer;
+
 	TSharedPtr<FGameplayEffectContext> Data;
 };
 
@@ -902,23 +789,26 @@ USTRUCT(BlueprintType)
 struct FGameplayEffectRemovalInfo
 {
 	GENERATED_USTRUCT_BODY()
-
+	
 	/** True when the gameplay effect's duration has not expired, meaning the gameplay effect is being forcefully removed.  */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Removal")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Removal")
 	bool bPrematureRemoval = false;
 
 	/** Number of Stacks this gameplay effect had before it was removed. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Removal")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Removal")
 	int32 StackCount = 0;
 
 	/** Actor this gameplay effect was targeting. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Removal")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Removal")
 	FGameplayEffectContextHandle EffectContext;
+
+	/** The Effect being Removed */
+	const FActiveGameplayEffect* ActiveEffect = nullptr;
 };
 
 
 /** Metadata about a gameplay cue execution */
-USTRUCT(BlueprintType, meta = (HasNativeBreak = "GameplayAbilities.AbilitySystemBlueprintLibrary.BreakGameplayCueParameters", HasNativeMake = "GameplayAbilities.AbilitySystemBlueprintLibrary.MakeGameplayCueParameters"))
+USTRUCT(BlueprintType, meta = (HasNativeBreak = "/Script/GameplayAbilities.AbilitySystemBlueprintLibrary.BreakGameplayCueParameters", HasNativeMake = "/Script/GameplayAbilities.AbilitySystemBlueprintLibrary.MakeGameplayCueParameters"))
 struct GAMEPLAYABILITIES_API FGameplayCueParameters
 {
 	GENERATED_USTRUCT_BODY()
@@ -1004,6 +894,9 @@ struct GAMEPLAYABILITIES_API FGameplayCueParameters
 	UPROPERTY(BlueprintReadWrite, Category = GameplayCue)
 	bool bReplicateLocationWhenUsingMinimalRepProxy = false;
 
+	/** If originating from a GameplayEffect, whether that GameplayEffect is still Active */
+	bool bGameplayEffectActive = true;
+
 	/** Optimized serializer */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 
@@ -1037,18 +930,18 @@ UENUM(BlueprintType)
 namespace EGameplayCueEvent
 {
 	/** Indicates what type of action happened to a specific gameplay cue tag. Sometimes you will get multiple events at once */
-	enum Type
+	enum Type : int
 	{
-		/** Called when GameplayCue is activated */
+		/** Called when a GameplayCue with duration is first activated, this will only be called if the client witnessed the activation */
 		OnActive,
 
-		/** Called when GameplayCue is active, even if it wasn't actually just applied (Join in progress, etc) */
+		/** Called when a GameplayCue with duration is first seen as active, even if it wasn't actually just applied (Join in progress, etc) */
 		WhileActive,
 
-		/** Called when a GameplayCue is executed: instant effects or periodic tick */
+		/** Called when a GameplayCue is executed, this is used for instant effects or periodic ticks */
 		Executed,
 
-		/** Called when GameplayCue is removed */
+		/** Called when a GameplayCue with duration is removed */
 		Removed
 	};
 }
@@ -1114,7 +1007,7 @@ UENUM(BlueprintType)
 namespace EGameplayTagEventType
 {
 	/** Rather a tag was added or removed, used in callbacks */
-	enum Type
+	enum Type : int
 	{		
 		/** Event only happens when tag is new or completely removed */
 		NewOrRemoved,
@@ -1406,6 +1299,9 @@ public:
 		PropertyGuid = Other.PropertyGuid;
 	}
 
+	// Pretty weird that the assignment operator copies the handle when the copy constructor doesn't - bug?
+	FGameplayTagBlueprintPropertyMapping& operator=(const FGameplayTagBlueprintPropertyMapping& Other) = default;
+
 	/** Gameplay tag being counted. */
 	UPROPERTY(EditAnywhere, Category = GameplayTagBlueprintProperty)
 	FGameplayTag TagToMap;
@@ -1451,8 +1347,11 @@ public:
 	void ApplyCurrentTags();
 
 #if WITH_EDITOR
+	UE_DEPRECATED(5.3, "The signature for IsDataValid has changed.  Please use the one that takes a FDataValidationContext")
+	EDataValidationResult IsDataValid(const UObject* ContainingAsset, TArray<FText>& ValidationErrors) { return EDataValidationResult::NotValidated; }
+
 	/** This can optionally be called in the owner's IsDataValid() for data validation. */
-	EDataValidationResult IsDataValid(UObject* ContainingAsset, TArray<FText>& ValidationErrors);
+	EDataValidationResult IsDataValid(const UObject* ContainingAsset, class FDataValidationContext& Context) const;
 #endif // #if WITH_EDITOR
 
 protected:
@@ -1482,12 +1381,16 @@ struct GAMEPLAYABILITIES_API FGameplayTagRequirements
 	GENERATED_USTRUCT_BODY()
 
 	/** All of these tags must be present */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameplayModifier)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameplayModifier, meta=(DisplayName="Must Have Tags"))
 	FGameplayTagContainer RequireTags;
 
 	/** None of these tags may be present */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameplayModifier)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameplayModifier, meta=(DisplayName="Must Not Have Tags"))
 	FGameplayTagContainer IgnoreTags;
+
+	/** Build up a more complex query that can't be expressed with RequireTags/IgnoreTags alone */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameplayModifier, meta = (DisplayName = "Query Must Match"))
+	FGameplayTagQuery TagQuery;
 
 	/** True if all required tags and no ignore tags found */
 	bool	RequirementsMet(const FGameplayTagContainer& Container) const;
@@ -1497,6 +1400,12 @@ struct GAMEPLAYABILITIES_API FGameplayTagRequirements
 
 	/** Return debug string */
 	FString ToString() const;
+
+	bool operator==(const FGameplayTagRequirements& Other) const;
+	bool operator!=(const FGameplayTagRequirements& Other) const;
+
+	/** Converts the RequireTags and IgnoreTags fields into an equivalent FGameplayTagQuery */
+	UE_NODISCARD FGameplayTagQuery ConvertTagFieldsToTagQuery() const;
 };
 
 
@@ -1511,7 +1420,6 @@ struct GAMEPLAYABILITIES_API FTagContainerAggregator
 	FTagContainerAggregator(FTagContainerAggregator&& Other)
 		: CapturedActorTags(MoveTemp(Other.CapturedActorTags))
 		, CapturedSpecTags(MoveTemp(Other.CapturedSpecTags))
-		, ScopedTags(MoveTemp(Other.ScopedTags))
 		, CachedAggregator(MoveTemp(Other.CachedAggregator))
 		, CacheIsValid(Other.CacheIsValid)
 	{
@@ -1520,7 +1428,6 @@ struct GAMEPLAYABILITIES_API FTagContainerAggregator
 	FTagContainerAggregator(const FTagContainerAggregator& Other)
 		: CapturedActorTags(Other.CapturedActorTags)
 		, CapturedSpecTags(Other.CapturedSpecTags)
-		, ScopedTags(Other.ScopedTags)
 		, CachedAggregator(Other.CachedAggregator)
 		, CacheIsValid(Other.CacheIsValid)
 	{
@@ -1530,7 +1437,6 @@ struct GAMEPLAYABILITIES_API FTagContainerAggregator
 	{
 		CapturedActorTags = MoveTemp(Other.CapturedActorTags);
 		CapturedSpecTags = MoveTemp(Other.CapturedSpecTags);
-		ScopedTags = MoveTemp(Other.ScopedTags);
 		CachedAggregator = MoveTemp(Other.CachedAggregator);
 		CacheIsValid = Other.CacheIsValid;
 		return *this;
@@ -1540,7 +1446,6 @@ struct GAMEPLAYABILITIES_API FTagContainerAggregator
 	{
 		CapturedActorTags = Other.CapturedActorTags;
 		CapturedSpecTags = Other.CapturedSpecTags;
-		ScopedTags = Other.ScopedTags;
 		CachedAggregator = Other.CachedAggregator;
 		CacheIsValid = Other.CacheIsValid;
 		return *this;
@@ -1565,6 +1470,7 @@ private:
 	UPROPERTY()
 	FGameplayTagContainer CapturedSpecTags;
 
+	UE_DEPRECATED(5.3, "This variable is unused and will removed")
 	UPROPERTY()
 	FGameplayTagContainer ScopedTags;
 
@@ -1595,11 +1501,7 @@ struct GAMEPLAYABILITIES_API FGameplayEffectSpecHandle
 		return Data.IsValid();
 	}
 
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		ABILITY_LOG(Fatal, TEXT("FGameplayEffectSpecHandle should not be NetSerialized"));
-		return false;
-	}
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 
 	/** Comparison operator */
 	bool operator==(FGameplayEffectSpecHandle const& Other) const
@@ -1647,22 +1549,7 @@ struct GAMEPLAYABILITIES_API FMinimalReplicationTagCountMap
 		TagMap.FindOrAdd(Tag)++;
 	}
 
-	void RemoveTag(const FGameplayTag& Tag)
-	{
-		MapID++;
-		int32& Count = TagMap.FindOrAdd(Tag);
-		Count--;
-		if (Count == 0)
-		{
-			// Remove from map so that we do not replicate
-			TagMap.Remove(Tag);
-		}
-		else if (Count < 0)
-		{
-			ABILITY_LOG(Error, TEXT("FMinimapReplicationTagCountMap::RemoveTag called on Tag %s and count is now < 0"), *Tag.ToString());
-			Count = 0;
-		}
-	}
+	void RemoveTag(const FGameplayTag& Tag);
 
 	void AddTags(const FGameplayTagContainer& Container)
 	{
@@ -1684,7 +1571,7 @@ struct GAMEPLAYABILITIES_API FMinimalReplicationTagCountMap
 	{
 		MapID++;
 		int32& Count = TagMap.FindOrAdd(Tag);
-		Count = NewCount;
+		Count = FMath::Max(0, NewCount);
 		
 		if (Count == 0)
 		{
@@ -1698,7 +1585,7 @@ struct GAMEPLAYABILITIES_API FMinimalReplicationTagCountMap
 	TMap<FGameplayTag, int32>	TagMap;
 
 	UPROPERTY()
-	class UAbilitySystemComponent* Owner;
+	TObjectPtr<class UAbilitySystemComponent> Owner;
 
 	/** Comparison operator */
 	bool operator==(FMinimalReplicationTagCountMap const& Other) const
@@ -1723,6 +1610,8 @@ struct GAMEPLAYABILITIES_API FMinimalReplicationTagCountMap
 	void RemoveAllTags();
 
 private:
+	friend FMinimalReplicationTagCountMapForNetSerializer;
+	friend UE::Net::FMinimalReplicationTagCountMapReplicationFragment;
 
 	bool bRequireNonOwningNetConnection = false;
 	void UpdateOwnerTagMap();

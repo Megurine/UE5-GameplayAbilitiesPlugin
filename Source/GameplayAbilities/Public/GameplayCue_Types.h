@@ -48,7 +48,7 @@ struct FGameplayCuePendingExecute
 
 	/** What component to send the cue on */
 	UPROPERTY()
-	UAbilitySystemComponent* OwningComponent = nullptr;
+	TObjectPtr<UAbilitySystemComponent> OwningComponent = nullptr;
 
 	/** If this cue is from a spec, here's the copy of that spec */
 	UPROPERTY()
@@ -65,7 +65,7 @@ struct FGameplayCueNotifyActorArray
 	GENERATED_BODY()
 
 	UPROPERTY(transient)
-	TArray<AGameplayCueNotify_Actor*> Actors;
+	TArray<TObjectPtr<AGameplayCueNotify_Actor>> Actors;
 };
 
 /** Struct for pooling and preallocating gameplaycuenotify_actor classes. This data is per world and used to track what actors are available to recycle and which classes need to preallocate instances of those actors */
@@ -76,7 +76,7 @@ struct FPreallocationInfo
 
 	/** Raw list of pooled instances. This relies on NotifyGameplayCueActorEndPlay always being called when actor is destroyed */
 	UPROPERTY(transient)
-	TMap<UClass*, FGameplayCueNotifyActorArray> PreallocatedInstances;
+	TMap<TObjectPtr<UClass>, FGameplayCueNotifyActorArray> PreallocatedInstances;
 
 	/** List of classes that will be pooled */
 	UPROPERTY(transient)
@@ -88,13 +88,19 @@ struct FPreallocationInfo
 
 
 /** Struct that is used by the gameplaycue manager to tie an instanced gameplaycue to the calling gamecode. Usually this is just the target actor, but can also be unique per instigator/sourceobject */
-struct FGCNotifyActorKey
+struct UE_DEPRECATED(5.3, "Look at FGCNotifyActorKey constructor notes for upgrade steps.") FGCNotifyActorKey
 {
 	FGCNotifyActorKey()
 	{
 
 	}
 
+	// This class is deprecated.  It was previously used to index into a map to find an instance of AGameplayCueNotify_Actor which was in use.
+	// Instead, you can find the AGameplayCueNotify_Actor this way:
+	//	1. InTargetActor will be its parent.  So you search InTargetActor->Children for instances of AGameplayCueNotify_Actor.
+	//	2. InCueClass can be inferred from AGameplayCueNotify_Actor->GetClass().
+	//	3. AGameplayCueNotify_Actor has two new fields: CueInstigator (corresponds to InInstigatorActor) and CueSourceObject; (corresponds to InSourceObj).
+	// Refer to UGameplayCueManager::GetInstancedCueActor.
 	FGCNotifyActorKey(AActor* InTargetActor, UClass* InCueClass, AActor* InInstigatorActor=nullptr, const UObject* InSourceObj=nullptr)
 	{
 		TargetActor = FObjectKey(InTargetActor);
@@ -117,6 +123,7 @@ struct FGCNotifyActorKey
 	}
 };
 
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 FORCEINLINE uint32 GetTypeHash(const FGCNotifyActorKey& Key)
 {
 	return GetTypeHash(Key.TargetActor)	^
@@ -124,6 +131,7 @@ FORCEINLINE uint32 GetTypeHash(const FGCNotifyActorKey& Key)
 			GetTypeHash(Key.OptionalSourceObject) ^
 			GetTypeHash(Key.CueClass);
 }
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 /**
  *	FScopedGameplayCueSendContext

@@ -13,7 +13,7 @@ struct FGameplayEffectModCallbackData;
 UENUM()
 namespace EWaitAttributeChangeComparison
 {
-	enum Type
+	enum Type : int
 	{
 		None,
 		GreaterThan,
@@ -62,7 +62,7 @@ class GAMEPLAYABILITIES_API UAbilityTask_WaitAttributeChange : public UAbilityTa
 protected:
 
 	UPROPERTY()
-	UAbilitySystemComponent* ExternalOwner;
+	TObjectPtr<UAbilitySystemComponent> ExternalOwner;
 
 	UAbilitySystemComponent* GetFocusedASC();
 

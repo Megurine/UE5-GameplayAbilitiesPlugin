@@ -34,7 +34,7 @@ struct FNetSerializeScriptStructCache
 	bool NetSerialize(FArchive& Ar, UScriptStruct*& Struct);
 
 	UPROPERTY()
-	TArray<UScriptStruct*> ScriptStructs;
+	TArray<TObjectPtr<UScriptStruct>> ScriptStructs;
 };
 
 
@@ -50,14 +50,11 @@ class GAMEPLAYABILITIES_API UAbilitySystemGlobals : public UObject
 		return *IGameplayAbilitiesModule::Get().GetAbilitySystemGlobals();
 	}
 
-	/** Should be called once as part of project setup to load global data tables and tags */
+	/** Will be called once on first use to load global data tables and tags (see FGameplayAbilitiesModule::GetAbilitySystemGlobals) */
 	virtual void InitGlobalData();
 
 	/** Returns true if InitGlobalData has been called */
-	bool IsAbilitySystemGlobalsInitialized()
-	{
-		return GlobalAttributeSetInitter.IsValid();
-	}
+	bool IsAbilitySystemGlobalsInitialized() const;
 
 	/** Returns the globally registered curve table */
 	UCurveTable* GetGlobalCurveTable();
@@ -146,12 +143,12 @@ class GAMEPLAYABILITIES_API UAbilitySystemGlobals : public UObject
 	// Cheat functions
 
 	/** Toggles whether we should ignore ability cooldowns. Does nothing in shipping builds */
-	UFUNCTION(exec)
-	virtual void ToggleIgnoreAbilitySystemCooldowns();
+	UE_DEPRECATED(5.3, "Use CVarAbilitySystemIgnoreCooldowns")
+	virtual void ToggleIgnoreAbilitySystemCooldowns() {}
 
 	/** Toggles whether we should ignore ability costs. Does nothing in shipping builds */
-	UFUNCTION(exec)
-	virtual void ToggleIgnoreAbilitySystemCosts();
+	UE_DEPRECATED(5.3, "Use CVarAbilitySystemIgnoreCosts")
+	virtual void ToggleIgnoreAbilitySystemCosts() {}
 
 	/** Returns true if ability cooldowns are ignored, returns false otherwise. Always returns false in shipping builds. */
 	bool ShouldIgnoreCooldowns() const;
@@ -160,17 +157,17 @@ class GAMEPLAYABILITIES_API UAbilitySystemGlobals : public UObject
 	bool ShouldIgnoreCosts() const;
 
 	/** Show all abilities currently assigned to the local player */
-	UFUNCTION(exec)
-	void ListPlayerAbilities();
+	UE_DEPRECATED(5.3, "Use DebugAbilitySystemAbilityListGrantedCommand")
+	void ListPlayerAbilities() {}
 	/** Force server activation of a specific player ability (useful for cheat testing) */
-	UFUNCTION(exec)
-	void ServerActivatePlayerAbility(FString AbilityNameMatch);
+	UE_DEPRECATED(5.3, "Use DebugAbilitySystemAbilityActivateCommand")
+	void ServerActivatePlayerAbility(FString AbilityNameMatch) {}
 	/** Force server deactivation of a specific player ability (useful for cheat testing) */
-	UFUNCTION(exec)
-	void ServerEndPlayerAbility(FString AbilityNameMatch);
+	UE_DEPRECATED(5.3, "Use DebugAbilitySystemAbilityCancelCommand (EndAbility is only for internal usage)")
+	void ServerEndPlayerAbility(FString AbilityNameMatch) {}
 	/** Force server cancellation of a specific player ability (useful for cheat testing) */
-	UFUNCTION(exec)
-	void ServerCancelPlayerAbility(FString AbilityNameMatch);
+	UE_DEPRECATED(5.3, "Use DebugAbilitySystemAbilityCancelCommand")
+	void ServerCancelPlayerAbility(FString AbilityNameMatch) {}
 
 	/** Called when debug strings are available, to write them to the display */
 	DECLARE_MULTICAST_DELEGATE(FOnClientServerDebugAvailable);
@@ -225,7 +222,7 @@ class GAMEPLAYABILITIES_API UAbilitySystemGlobals : public UObject
 	UPROPERTY(config)
 	FName ActivateFailNetworkingName;
 
-	/** How many bits to use for "number of tags" in FMinimapReplicationTagCountMap::NetSerialize.  */
+	/** How many bits to use for "number of tags" in FMinimalReplicationTagCountMap::NetSerialize.  */
 	UPROPERTY(config)
 	int32	MinimalReplicationTagCountBits;
 
@@ -308,6 +305,9 @@ class GAMEPLAYABILITIES_API UAbilitySystemGlobals : public UObject
 	UPROPERTY()
 	FNetSerializeScriptStructCache	TargetDataStructCache;
 
+	UPROPERTY()
+	FNetSerializeScriptStructCache	EffectContextStructCache;
+
 	void AddAttributeDefaultTables(const TArray<FSoftObjectPath>& AttribDefaultTableNames);
 
 protected:
@@ -321,9 +321,11 @@ protected:
 	// data used for ability system cheat commands
 
 	/** If we should ignore the cooldowns when activating abilities in the ability system. Set with ToggleIgnoreAbilitySystemCooldowns() */
+	UE_DEPRECATED(5.3, "Use bIgnoreAbilitySystemCooldowns in the AbilitySystemGlobals namespace, controlled by new CVarAbilitySystemIgnoreCooldowns")
 	bool bIgnoreAbilitySystemCooldowns;
 
 	/** If we should ignore the costs when activating abilities in the ability system. Set with ToggleIgnoreAbilitySystemCosts() */
+	UE_DEPRECATED(5.3, "Use bIgnoreAbilitySystemCosts in the AbilitySystemGlobals namespace, controlled by new CVarAbilitySystemIgnoreCosts")
 	bool bIgnoreAbilitySystemCosts;
 #endif // WITH_ABILITY_CHEATS
 
@@ -344,14 +346,14 @@ protected:
 	FSoftObjectPath GlobalCurveTableName;
 
 	UPROPERTY()
-	UCurveTable* GlobalCurveTable;
+	TObjectPtr<UCurveTable> GlobalCurveTable;
 
 	/** Holds information about the valid attributes' min and max values and stacking rules */
 	UPROPERTY(config)
 	FSoftObjectPath GlobalAttributeMetaDataTableName;
 
 	UPROPERTY()
-	UDataTable* GlobalAttributeMetaDataTable;
+	TObjectPtr<UDataTable> GlobalAttributeMetaDataTable;
 
 	/** Holds default values for attribute sets, keyed off of Name/Levels. NOTE: Preserved for backwards compatibility, should use the array version below now */
 	UPROPERTY(config)
@@ -363,7 +365,7 @@ protected:
 
 	/** Curve tables containing default values for attribute sets, keyed off of Name/Levels */
 	UPROPERTY()
-	TArray<UCurveTable*> GlobalAttributeDefaultsTables;
+	TArray<TObjectPtr<UCurveTable>> GlobalAttributeDefaultsTables;
 
 	/** Class reference to gameplay cue manager. Use this if you want to just instantiate a class for your gameplay cue manager without having to create an asset. */
 	UPROPERTY(config)
@@ -382,7 +384,9 @@ protected:
 	FSoftObjectPath GameplayTagResponseTableName;
 
 	UPROPERTY()
-	UGameplayTagReponseTable* GameplayTagResponseTable;
+	TObjectPtr<UGameplayTagReponseTable> GameplayTagResponseTable;
+
+	bool bInitialized = false;
 
 	/** Set to true if you want clients to try to predict gameplay effects done to targets. If false it will only predict self effects */
 	UPROPERTY(config)
@@ -397,7 +401,7 @@ protected:
 
 	/** Manager for all gameplay cues */
 	UPROPERTY()
-	UGameplayCueManager* GlobalGameplayCueManager;
+	TObjectPtr<UGameplayCueManager> GlobalGameplayCueManager;
 
 	/** Used to initialize attribute sets */
 	TSharedPtr<FAttributeSetInitter> GlobalAttributeSetInitter;
@@ -411,7 +415,7 @@ protected:
 #endif
 
 	void ResetCachedData();
-	void HandlePreLoadMap(const FString& MapName);
+	void HandlePreLoadMap(const FWorldContext& WorldContext, const FString& MapName);
 
 #if WITH_EDITORONLY_DATA
 	bool RegisteredReimportCallback;

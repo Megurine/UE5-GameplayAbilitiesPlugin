@@ -2,6 +2,8 @@
 
 #include "GameplayCueNotify_Looping.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GameplayCueNotify_Looping)
+
 
 //////////////////////////////////////////////////////////////////////////
 // AGameplayCueNotify_Looping
@@ -141,13 +143,15 @@ void AGameplayCueNotify_Looping::RemoveLoopingEffects()
 }
 
 #if WITH_EDITOR
-EDataValidationResult AGameplayCueNotify_Looping::IsDataValid(TArray<FText>& ValidationErrors)
+EDataValidationResult AGameplayCueNotify_Looping::IsDataValid(FDataValidationContext& Context) const
 {
-	ApplicationEffects.ValidateAssociatedAssets(this, TEXT("ApplicationEffects"), ValidationErrors);
-	LoopingEffects.ValidateAssociatedAssets(this, TEXT("LoopingEffects"), ValidationErrors);
-	RecurringEffects.ValidateAssociatedAssets(this, TEXT("RecurringEffects"), ValidationErrors);
-	RemovalEffects.ValidateAssociatedAssets(this, TEXT("RemovalEffects"), ValidationErrors);
+	TArray<FText> ValidationErrors;
+	ApplicationEffects.ValidateAssociatedAssets(this, TEXT("ApplicationEffects"), Context);
+	LoopingEffects.ValidateAssociatedAssets(this, TEXT("LoopingEffects"), Context);
+	RecurringEffects.ValidateAssociatedAssets(this, TEXT("RecurringEffects"), Context);
+	RemovalEffects.ValidateAssociatedAssets(this, TEXT("RemovalEffects"), Context);
 
 	return ((ValidationErrors.Num() > 0) ? EDataValidationResult::Invalid : EDataValidationResult::Valid);
 }
 #endif // #if WITH_EDITOR
+

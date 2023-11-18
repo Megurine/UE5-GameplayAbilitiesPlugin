@@ -5,14 +5,12 @@
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
 #include "UObject/UnrealType.h"
-#include "GameFramework/Actor.h"
-#include "Engine/CurveTable.h"
 #include "Engine/DataTable.h"
-#include "ScalableFloat.h"
 #include "AttributeSet.generated.h"
 
 class UAbilitySystemComponent;
 class UAttributeSet;
+class UCurveTable;
 struct FGameplayAbilityActorInfo;
 struct FAggregator;
 
@@ -159,8 +157,7 @@ private:
 	//FProperty*	Attribute;
 
 	UPROPERTY(Category = GameplayAttribute, VisibleAnywhere)
-	UStruct* AttributeOwner;
-		
+	TObjectPtr<UStruct> AttributeOwner;
 };
 
 #if WITH_EDITORONLY_DATA
@@ -241,7 +238,7 @@ public:
 	virtual void InitFromMetaDataTable(const UDataTable* DataTable);
 
 	/** Gets information about owning actor */
-	FORCEINLINE AActor* GetOwningActor() const { return CastChecked<AActor>(GetOuter()); }
+	AActor* GetOwningActor() const;
 	UAbilitySystemComponent* GetOwningAbilitySystemComponent() const;
 	UAbilitySystemComponent* GetOwningAbilitySystemComponentChecked() const;
 	FGameplayAbilityActorInfo* GetActorInfo() const;
@@ -255,6 +252,10 @@ public:
 	virtual void PreNetReceive() override;
 	virtual void PostNetReceive() override;
 
+#if UE_WITH_IRIS
+	/** Register all replication fragments */
+	virtual void RegisterReplicationFragments(UE::Net::FFragmentRegistrationContext& Context, UE::Net::EFragmentRegistrationFlags RegistrationFlags) override;
+#endif // UE_WITH_IRIS
 protected:
 	/** Is this attribute set safe to ID over the network by name?  */
 	uint32 bNetAddressable : 1;

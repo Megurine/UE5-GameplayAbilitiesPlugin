@@ -12,6 +12,14 @@
 #include "GameplayPrediction.h"
 #include "GameplayCueInterface.generated.h"
 
+#if UE_WITH_IRIS
+struct FMinimalGameplayCueReplicationProxyForNetSerializer;
+namespace UE::Net
+{
+	class FMinimalGameplayCueReplicationProxyReplicationFragment;
+}
+#endif
+
 /** Interface for actors that wish to handle GameplayCue events from GameplayEffects. Native only because blueprints can't implement interfaces with native functions */
 UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
 class UGameplayCueInterface: public UInterface
@@ -143,6 +151,9 @@ struct GAMEPLAYABILITIES_API FActiveGameplayCueContainer : public FFastArraySeri
 	/** Does explicit check for gameplay cue tag */
 	bool HasCue(const FGameplayTag& Tag) const;
 
+	/** Returns true if the instance should be replicated. If false the property is allowed to be disabled for replication. */
+	bool ShouldReplicate() const;
+
 	bool NetDeltaSerialize(FNetDeltaSerializeInfo & DeltaParms);
 
 	// Will broadcast the OnRemove event for all currently active cues
@@ -152,8 +163,8 @@ private:
 
 	int32 GetGameStateTime(const UWorld* World) const;
 
-	UPROPERTY()
-	class UAbilitySystemComponent*	Owner = nullptr;
+	UPROPERTY(NotReplicated)
+	TObjectPtr<class UAbilitySystemComponent>	Owner = nullptr;
 	
 	friend struct FActiveGameplayCue;
 };
@@ -220,6 +231,10 @@ struct GAMEPLAYABILITIES_API FMinimalGameplayCueReplicationProxy
 	bool operator!=(const FMinimalGameplayCueReplicationProxy& Other) const { return !(*this == Other); }
 
 private:
+#if UE_WITH_IRIS
+	friend FMinimalGameplayCueReplicationProxyForNetSerializer;
+	friend UE::Net::FMinimalGameplayCueReplicationProxyReplicationFragment;
+#endif
 
 	enum { NumInlineTags = 16 };
 
@@ -229,7 +244,7 @@ private:
 	TBitArray< TInlineAllocator<NumInlineTags> >			LocalBitMask;
 
 	UPROPERTY()
-	UAbilitySystemComponent* Owner = nullptr;
+	TObjectPtr<UAbilitySystemComponent> Owner = nullptr;
 
 	int32 LastSourceArrayReplicationKey = -1;
 

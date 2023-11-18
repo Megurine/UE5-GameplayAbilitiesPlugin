@@ -7,6 +7,7 @@
 #include "GameplayAbilityWorldReticle.generated.h"
 
 class APlayerController;
+class AGameplayAbilityTargetActor;
 
 USTRUCT(BlueprintType)
 struct FWorldReticleParameters
@@ -37,7 +38,7 @@ public:
 
 	virtual bool IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const override;
 
-	void InitializeReticle(AActor* InTargetingActor, APlayerController* PlayerController, FWorldReticleParameters InParameters);
+	void InitializeReticle(AGameplayAbilityTargetActor* InTargetingActor, APlayerController* PlayerController, FWorldReticleParameters InParameters);
 
 	void SetIsTargetValid(bool bNewValue);
 	void SetIsTargetAnActor(bool bNewValue);
@@ -82,11 +83,17 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Network")
 	bool bIsTargetAnActor;
 
+#if WITH_EDITOR
+	/** This is used in the process of determining whether we should replicate to a specific client. */
+	UE_DEPRECATED(5.1, "This property is deprecated. Please use PrimaryPC instead")
+	APlayerController* MasterPC;
+#endif // WITH_EDITOR
+	
 	/** This is used in the process of determining whether we should replicate to a specific client. */
 	UPROPERTY(BlueprintReadOnly, Category = "Network")
-	APlayerController* MasterPC;
+	TObjectPtr<APlayerController> PrimaryPC;
 
 	/** In the future, we may want to grab things like sockets off of this. */
 	UPROPERTY(BlueprintReadOnly, Category = "Network")
-	AActor* TargetingActor;
+	TObjectPtr<AGameplayAbilityTargetActor> TargetingActor;
 };

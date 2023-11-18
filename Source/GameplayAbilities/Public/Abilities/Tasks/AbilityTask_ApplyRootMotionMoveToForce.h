@@ -22,8 +22,9 @@ class AActor;
 UCLASS()
 class GAMEPLAYABILITIES_API UAbilityTask_ApplyRootMotionMoveToForce : public UAbilityTask_ApplyRootMotion_Base
 {
-	GENERATED_UCLASS_BODY()
-
+	GENERATED_BODY()
+	
+public:
 	UPROPERTY(BlueprintAssignable)
 	FApplyRootMotionMoveToForceDelegate OnTimedOut;
 
@@ -41,10 +42,7 @@ class GAMEPLAYABILITIES_API UAbilityTask_ApplyRootMotionMoveToForce : public UAb
 	virtual void OnDestroy(bool AbilityIsEnding) override;
 
 protected:
-
 	virtual void SharedInitAndApply() override;
-
-protected:
 
 	UPROPERTY(Replicated)
 	FVector StartLocation;
@@ -56,19 +54,20 @@ protected:
 	float Duration;
 
 	UPROPERTY(Replicated)
-	bool bSetNewMovementMode;
+	bool bSetNewMovementMode = false;
 
 	UPROPERTY(Replicated)
-	TEnumAsByte<EMovementMode> NewMovementMode;
+	TEnumAsByte<EMovementMode> NewMovementMode = EMovementMode::MOVE_Walking;
 
 	/** If enabled, we limit velocity to the initial expected velocity to go distance to the target over Duration.
 	 *  This prevents cases of getting really high velocity the last few frames of the root motion if you were being blocked by
 	 *  collision. Disabled means we do everything we can to velocity during the move to get to the TargetLocation. */
 	UPROPERTY(Replicated)
-	bool bRestrictSpeedToExpected;
+	bool bRestrictSpeedToExpected = false;
 
 	UPROPERTY(Replicated)
-	UCurveVector* PathOffsetCurve;
+	TObjectPtr<UCurveVector> PathOffsetCurve = nullptr;
 
-	EMovementMode PreviousMovementMode;
+	EMovementMode PreviousMovementMode = EMovementMode::MOVE_None;
+	uint8 PreviousCustomMovementMode = 0;
 };

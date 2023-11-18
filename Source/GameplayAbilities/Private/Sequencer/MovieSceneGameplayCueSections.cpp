@@ -9,6 +9,8 @@
 #include "AbilitySystemGlobals.h"
 #include "GameplayCueManager.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(MovieSceneGameplayCueSections)
+
 namespace UE
 {
 namespace MovieScene
@@ -129,7 +131,7 @@ void ExecuteGameplayCueEvent(IMovieScenePlayer* Player, const UE::MovieScene::FE
 
 			if (GameplayCueKey.bAttachToBinding)
 			{
-				if (CueParameters.TargetAttachComponent != nullptr)
+				if (CueParameters.TargetAttachComponent.Get() != nullptr)
 				{
 					FTransform Transform = FTransform::Identity;
 

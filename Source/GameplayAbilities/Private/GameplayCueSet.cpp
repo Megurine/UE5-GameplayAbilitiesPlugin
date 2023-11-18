@@ -4,12 +4,47 @@
 #include "GameplayTagsManager.h"
 #include "GameplayTagsModule.h"
 #include "AbilitySystemGlobals.h"
+#include "AbilitySystemLog.h"
 #include "GameplayCueNotify_Actor.h"
 #include "GameplayCueNotify_Static.h"
 #include "GameplayCueManager.h"
 #include "NativeGameplayTags.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GameplayCueSet)
+
 UE_DEFINE_GAMEPLAY_TAG_STATIC(StaticTag_GameplayCue, TEXT("GameplayCue"));
+
+namespace GameplayCueDebug
+{
+	static FGameplayTagContainer DebugGameplayCueFilter;
+	FAutoConsoleCommand ConCommandDebugGameplayCueFilter(
+		TEXT("GameplayCue.FilterCuesByTag"),
+		TEXT("Adds or removes a GameplayCue tag to the debug filter list. If the filter is populated, only GameplayCues with tags in the filter will be invoked."),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args) 
+			{
+				for (const FString& TagToFilter : Args)
+				{
+					const FGameplayTag ExistingTag = FGameplayTag::RequestGameplayTag(FName(TagToFilter));
+					if (!ExistingTag.IsValid())
+					{
+						continue;
+					}
+
+					if (DebugGameplayCueFilter.HasTagExact(ExistingTag))
+					{
+						DebugGameplayCueFilter.RemoveTag(ExistingTag);
+					}
+					else
+					{
+						DebugGameplayCueFilter.AddTagFast(ExistingTag);
+					}
+				}
+			})
+	);
+}
+
+// Let's use this to create a path for testing what happens when GameplayCues are failing to load (or are loading slowly due to IO contention)
+static TAutoConsoleVariable<bool> CVarGameplayCueFailLoads(TEXT("AbilitySystem.GameplayCueFailLoads"), false, TEXT("Pretend all GameplayCues are unloaded (and keep requesting loads) while true. Set to false to allow GameplayCues to play."), ECVF_Default);
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 //
@@ -28,6 +63,16 @@ bool UGameplayCueSet::HandleGameplayCue(AActor* TargetActor, FGameplayTag Gamepl
 {
 #if WITH_SERVER_CODE
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_GameplayCueSet_HandleGameplayCue);
+#endif
+	
+#if !UE_BUILD_SHIPPING
+	if (!GameplayCueDebug::DebugGameplayCueFilter.IsEmpty())
+	{
+		if (!GameplayCueDebug::DebugGameplayCueFilter.HasTagExact(GameplayCueTag))
+		{
+			return false;
+		}
+	}
 #endif
 
 	// GameplayCueTags could have been removed from the dictionary but not content. When the content is resaved the old tag will be cleaned up, but it could still come through here
@@ -229,12 +274,14 @@ bool UGameplayCueSet::HandleGameplayCueNotify_Internal(AActor* TargetActor, int3
 
 		Parameters.MatchedTagName = CueData.GameplayCueTag;
 
+		const bool bDebugFailLoads = CVarGameplayCueFailLoads.GetValueOnGameThread();
+
 		// If object is not loaded yet
-		if (CueData.LoadedGameplayCueClass == nullptr)
+		if (CueData.LoadedGameplayCueClass == nullptr || bDebugFailLoads)
 		{
 			// See if the object is loaded but just not hooked up here
 			CueData.LoadedGameplayCueClass = Cast<UClass>(CueData.GameplayCueNotifyObj.ResolveObject());
-			if (CueData.LoadedGameplayCueClass == nullptr)
+			if (CueData.LoadedGameplayCueClass == nullptr || bDebugFailLoads)
 			{
 				if (!CueManager->HandleMissingGameplayCue(this, CueData, TargetActor, EventType, Parameters))
 				{
@@ -265,12 +312,20 @@ bool UGameplayCueSet::HandleGameplayCueNotify_Internal(AActor* TargetActor, int3
 		}
 		else if (AGameplayCueNotify_Actor* InstancedCue = Cast<AGameplayCueNotify_Actor>(CueData.LoadedGameplayCueClass->ClassDefaultObject))
 		{
+			bool bShouldDestroy = false;
+			if (EventType == EGameplayCueEvent::Executed && !Parameters.bGameplayEffectActive && InstancedCue->bAutoDestroyOnRemove)
+			{
+				bShouldDestroy = true;
+			}
+
 			if (InstancedCue->HandlesEvent(EventType))
 			{
 				if (TargetActor)
 				{
+					TSubclassOf<AGameplayCueNotify_Actor> InstancedClass = InstancedCue->GetClass();
+
 					//Get our instance. We should probably have a flag or something to determine if we want to reuse or stack instances. That would mean changing our map to have a list of active instances.
-					AGameplayCueNotify_Actor* SpawnedInstancedCue = CueManager->GetInstancedCueActor(TargetActor, CueData.LoadedGameplayCueClass, Parameters);
+					AGameplayCueNotify_Actor* SpawnedInstancedCue = CueManager->GetInstancedCueActor(TargetActor, InstancedClass, Parameters);
 					if (ensure(SpawnedInstancedCue))
 					{
 						SpawnedInstancedCue->HandleGameplayCue(TargetActor, EventType, Parameters);
@@ -278,6 +333,11 @@ bool UGameplayCueSet::HandleGameplayCueNotify_Internal(AActor* TargetActor, int3
 						if (!SpawnedInstancedCue->IsOverride)
 						{
 							HandleGameplayCueNotify_Internal(TargetActor, CueData.ParentDataIdx, EventType, Parameters);
+						}
+
+						if (bShouldDestroy)
+						{
+							SpawnedInstancedCue->HandleGameplayCue(TargetActor, EGameplayCueEvent::Removed, Parameters);
 						}
 					}
 				}
@@ -356,3 +416,4 @@ FGameplayTag UGameplayCueSet::BaseGameplayCueTag()
 	// Note we should not cache this off as a static variable, since for new projects the GameplayCue tag will not be found until one is created.
 	return StaticTag_GameplayCue.GetTag();
 }
+

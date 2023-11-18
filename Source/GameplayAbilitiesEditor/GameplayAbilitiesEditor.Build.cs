@@ -1,26 +1,11 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-using UnrealBuildTool;
-using System.IO;
-
 namespace UnrealBuildTool.Rules
 {
 	public class GameplayAbilitiesEditor : ModuleRules
 	{
 		public GameplayAbilitiesEditor(ReadOnlyTargetRules Target) : base(Target)
 		{
-			var EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
-
-            // These nodes are not public so are hard to subclass
-
-			PrivateIncludePaths.AddRange(
-				new string[] {
-					"GameplayAbilitiesEditor/Private",
-					 Path.Combine(EngineDir, @"Source/Editor/GraphEditor/Private"),
-					 Path.Combine(EngineDir, @"Source/Editor/Kismet/Private"),
-					 Path.Combine(EngineDir, @"Source/Developer/AssetTools/Private")
-				});
-
 			PublicDependencyModuleNames.Add("GameplayTasks");
 
 			PrivateDependencyModuleNames.AddRange(
@@ -39,12 +24,12 @@ namespace UnrealBuildTool.Rules
 					"InputCore",
 					"PropertyEditor",
 					"Slate",
-					"SlateCore",
-					"EditorStyle",
+					"SlateCore",					
 					"BlueprintGraph",
 					"Kismet",
 					"KismetCompiler",
 					"GraphEditor",
+					"LevelSequence",
 					"MainFrame",
 					"EditorFramework",
 					"UnrealEd",
@@ -56,7 +41,8 @@ namespace UnrealBuildTool.Rules
 					"MovieSceneTools",
 					"MovieScene",
 					"DataRegistry",
-					"DataRegistryEditor"
+					"DataRegistryEditor",
+					"ToolMenus"
 				}
 			);
 		}

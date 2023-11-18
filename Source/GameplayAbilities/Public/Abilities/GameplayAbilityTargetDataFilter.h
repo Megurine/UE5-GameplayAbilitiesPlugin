@@ -12,7 +12,7 @@
 UENUM(BlueprintType)
 namespace ETargetDataFilterSelf
 {
-	enum Type
+	enum Type : int
 	{
 		TDFS_Any 			UMETA(DisplayName = "Allow self or others"),
 		TDFS_NoSelf 		UMETA(DisplayName = "Filter self out"),
@@ -65,7 +65,7 @@ struct GAMEPLAYABILITIES_API FGameplayTargetDataFilter
 
 	/** Actor we're comparing against. */
 	UPROPERTY()
-	AActor* SelfActor = nullptr;
+	TObjectPtr<AActor> SelfActor = nullptr;
 
 	/** Subclass actors must be to pass the filter. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ExposeOnSpawn = true), Category = Filter)

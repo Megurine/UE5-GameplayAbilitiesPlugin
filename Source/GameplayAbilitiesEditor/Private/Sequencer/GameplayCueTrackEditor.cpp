@@ -5,13 +5,14 @@
 #include "Sequencer/MovieSceneGameplayCueSections.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "GameFramework/Actor.h"
-#include "EditorStyleSet.h"
+#include "Styling/AppStyle.h"
 #include "UObject/Package.h"
 #include "Tracks/MovieSceneEventTrack.h"
 #include "ISequencerSection.h"
 #include "Widgets/SBoxPanel.h"
 #include "SequencerUtilities.h"
 #include "MovieSceneSequenceEditor.h"
+#include "LevelSequence.h"
 
 #define LOCTEXT_NAMESPACE "FGameplayCueTrackEditor"
 
@@ -140,12 +141,19 @@ bool FGameplayCueTrackEditor::SupportsType(TSubclassOf<UMovieSceneTrack> Type) c
 
 bool FGameplayCueTrackEditor::SupportsSequence(UMovieSceneSequence* InSequence) const
 {
-	return true;
+	ETrackSupport TrackSupported = InSequence ? InSequence->IsTrackSupported(UMovieSceneGameplayCueTrack::StaticClass()) : ETrackSupport::Default;
+
+	if (TrackSupported == ETrackSupport::NotSupported)
+	{
+		return false;
+	}
+
+	return (InSequence && InSequence->IsA(ULevelSequence::StaticClass())) || TrackSupported == ETrackSupport::Supported;
 }
 
 const FSlateBrush* FGameplayCueTrackEditor::GetIconBrush() const
 {
-	return FEditorStyle::GetBrush("Sequencer.Tracks.Event");
+	return FAppStyle::GetBrush("Sequencer.Tracks.Event");
 }
 
 void FGameplayCueTrackEditor::AddTracks(TRange<FFrameNumber> SectionTickRange, UClass* SectionClass, TArray<FGuid> InObjectBindingIDs)
@@ -168,10 +176,10 @@ void FGameplayCueTrackEditor::AddTracks(TRange<FFrameNumber> SectionTickRange, U
 
 	if (InObjectBindingIDs.Num() == 0)
 	{
-		UMovieSceneGameplayCueTrack* NewMasterTrack = FocusedMovieScene->AddMasterTrack<UMovieSceneGameplayCueTrack>();
-		AddSectionToTrack(NewMasterTrack, SectionTickRange, SectionClass);
+		UMovieSceneGameplayCueTrack* NewMainTrack = FocusedMovieScene->AddTrack<UMovieSceneGameplayCueTrack>();
+		AddSectionToTrack(NewMainTrack, SectionTickRange, SectionClass);
 
-		SequencerPtr->OnAddTrack(NewMasterTrack, FGuid());
+		SequencerPtr->OnAddTrack(NewMainTrack, FGuid());
 	}
 	else for (const FGuid& ObjectBindingID : InObjectBindingIDs)
 	{

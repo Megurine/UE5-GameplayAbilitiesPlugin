@@ -1,11 +1,14 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "GameplayCueInterface.h"
+#include "AbilitySystemLog.h"
 #include "AbilitySystemStats.h"
 #include "GameplayTagsModule.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayCueSet.h"
 #include "Engine/PackageMapClient.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GameplayCueInterface)
 
 
 namespace GameplayCueInterfacePrivate
@@ -240,19 +243,25 @@ void FActiveGameplayCueContainer::RemoveCue(const FGameplayTag& Tag)
 		return;
 	}
 
-	for (int32 idx=0; idx < GameplayCues.Num(); ++idx)
+	
+	// Iterate backwards so we can remove during loop
+	int32 CountDelta = 0;
+	for (int32 idx=GameplayCues.Num()-1; idx >= 0; --idx)
 	{
 		FActiveGameplayCue& Cue = GameplayCues[idx];
 
 		if (Cue.GameplayCueTag == Tag)
 		{
 			GameplayCues.RemoveAt(idx);
-			MarkArrayDirty();
-			Owner->UpdateTagMap(Tag, -1);
-			return;
+			CountDelta -= 1;
 		}
 	}
 
+	if (CountDelta < 0)
+	{
+		MarkArrayDirty();
+		Owner->UpdateTagMap(Tag, CountDelta);
+	}
 }
 
 void FActiveGameplayCueContainer::RemoveAllCues()
@@ -303,7 +312,7 @@ void FActiveGameplayCueContainer::PredictiveAdd(const FGameplayTag& Tag, FPredic
 	}
 
 	Owner->UpdateTagMap(Tag, 1);	
-	PredictionKey.NewRejectOrCaughtUpDelegate(FPredictionKeyEvent::CreateUObject(Owner, &UAbilitySystemComponent::OnPredictiveGameplayCueCatchup, Tag));
+	PredictionKey.NewRejectOrCaughtUpDelegate(FPredictionKeyEvent::CreateUObject(ToRawPtr(Owner), &UAbilitySystemComponent::OnPredictiveGameplayCueCatchup, Tag));
 }
 
 bool FActiveGameplayCueContainer::HasCue(const FGameplayTag& Tag) const
@@ -320,9 +329,19 @@ bool FActiveGameplayCueContainer::HasCue(const FGameplayTag& Tag) const
 	return false;
 }
 
-bool FActiveGameplayCueContainer::NetDeltaSerialize(FNetDeltaSerializeInfo & DeltaParms)
+bool FActiveGameplayCueContainer::ShouldReplicate() const
 {
 	if (bMinimalReplication && (Owner && Owner->ReplicationMode == EGameplayEffectReplicationMode::Full))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool FActiveGameplayCueContainer::NetDeltaSerialize(FNetDeltaSerializeInfo & DeltaParms)
+{
+	if (!ShouldReplicate())
 	{
 		return false;
 	}

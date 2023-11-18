@@ -4,6 +4,7 @@
 #include "Stats/StatsMisc.h"
 #include "EngineDefines.h"
 #include "Engine/ObjectLibrary.h"
+#include "Engine/World.h"
 #include "VisualLogger/VisualLogger.h"
 #include "AbilitySystemLog.h"
 #include "GameplayEffectAggregator.h"
@@ -15,6 +16,11 @@
 #include "Net/Core/PushModel/PushModel.h"
 #include "UObject/UObjectThreadContext.h"
 
+#if UE_WITH_IRIS
+#include "Iris/ReplicationSystem/ReplicationFragmentUtil.h"
+#endif // UE_WITH_IRIS
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(AttributeSet)
 
 #if ENABLE_VISUAL_LOG
 namespace
@@ -44,6 +50,7 @@ void FGameplayAttributeData::SetBaseValue(float NewValue)
 {
 	BaseValue = NewValue;
 }
+
 
 FGameplayAttribute::FGameplayAttribute(FProperty *NewProperty)
 {
@@ -239,24 +246,57 @@ void FGameplayAttribute::PostSerialize(const FArchive& Ar)
 {
 	if (Ar.IsLoading() && Ar.IsPersistent() && !Ar.HasAnyPortFlags(PPF_Duplicate | PPF_DuplicateForPIE))
 	{
+		// Once struct is loaded, check if redirectors apply to the imported attribute field path
+		const FString PathName = Attribute.ToString();
+		const FString RedirectedPathName = FFieldPathProperty::RedirectFieldPathName(PathName);
+		if (!RedirectedPathName.Equals(PathName))
+		{
+			// If the path got redirected, attempt to resolve the new property
+			FString NewAttributeOwner;
+			FString NewAttributeName;
+			if (RedirectedPathName.Split(":", &NewAttributeOwner, &NewAttributeName))
+			{
+				// Update attribute's field path (may or may not resolve)
+				const UStruct* NewClass = FindObject<UStruct>(nullptr, *NewAttributeOwner);
+				Attribute = FindFProperty<FProperty>(NewClass, *NewAttributeName);
+
+				// Verbose log any applied redirectors
+				FUObjectSerializeContext* LoadContext = const_cast<FArchive*>(&Ar)->GetSerializeContext();
+				const FString AssetName = (LoadContext && LoadContext->SerializedObject) ? LoadContext->SerializedObject->GetPathName() : TEXT("Unknown Object");
+				ABILITY_LOG(Verbose, TEXT("FGameplayAttribute::PostSerialize redirected an attribute '%s' -> '%s'. (Asset: %s)"), *PathName, *RedirectedPathName, *AssetName);
+			}
+		}
+
+		// The attribute reference is serialized in two ways:
+		// - 'Attribute' contains the full path, ex: /Script/GameModule.GameAttributeSet:AttrName
+		// - 'AttributeOwner' and 'AttributeName' are cached references to the attribute set UClass and the attribute's name
+		// We want the data to stay in sync, with 'Attribute' having priority as source of truth. In both cases, derive one from
+		// the other to keep them in sync.
 		if (Attribute.Get())
 		{
+			// Ensure owner and name are in sync with field path
 			AttributeOwner = Attribute->GetOwnerStruct();
 			Attribute->GetName(AttributeName);
 		}
 		else if (!AttributeName.IsEmpty() && AttributeOwner != nullptr)
 		{
+			// Attempt to resolve field path from owner and attribute name
 			Attribute = FindFProperty<FProperty>(AttributeOwner, *AttributeName);
 
+			// Log warning if attribute failed to resolve while name + owner were non-null
 			if (!Attribute.Get())
 			{
 				FUObjectSerializeContext* LoadContext = const_cast<FArchive*>(&Ar)->GetSerializeContext();
-				FString AssetName = (LoadContext && LoadContext->SerializedObject) ? LoadContext->SerializedObject->GetPathName() : TEXT("Unknown Object");
-
-				FString OwnerName = AttributeOwner ? AttributeOwner->GetName() : TEXT("NONE");
+				const FString AssetName = (LoadContext && LoadContext->SerializedObject) ? LoadContext->SerializedObject->GetPathName() : TEXT("Unknown Object");
+				const FString OwnerName = AttributeOwner ? AttributeOwner->GetName() : TEXT("NONE");
 				ABILITY_LOG(Warning, TEXT("FGameplayAttribute::PostSerialize called on an invalid attribute with owner %s and name %s. (Asset: %s)"), *OwnerName, *AttributeName, *AssetName);
 			}
 		}
+	}
+	if (Ar.IsSaving() && IsValid())
+	{
+		// This marks the attribute "address" for later searching
+		Ar.MarkSearchableName(FGameplayAttribute::StaticStruct(), FName(FString::Printf(TEXT("%s.%s"), *GetUProperty()->GetOwnerVariant().GetName(), *GetUProperty()->GetName())));
 	}
 }
 #endif
@@ -339,7 +379,6 @@ void FGameplayAttribute::GetAllAttributeProperties(TArray<FProperty*>& OutProper
 	}
 }
 
-
 UAttributeSet::UAttributeSet(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -369,6 +408,16 @@ void UAttributeSet::SetNetAddressable()
 {
 	bNetAddressable = true;
 }
+
+#if UE_WITH_IRIS
+void UAttributeSet::RegisterReplicationFragments(UE::Net::FFragmentRegistrationContext& Context, UE::Net::EFragmentRegistrationFlags RegistrationFlags)
+{
+	using namespace UE::Net;
+
+	// Build descriptors and allocate PropertyReplicationFragments for this object
+	FReplicationFragmentUtil::CreateAndRegisterFragmentsForObject(this, Context, RegistrationFlags);
+}
+#endif // UE_WITH_IRIS
 
 void UAttributeSet::InitFromMetaDataTable(const UDataTable* DataTable)
 {
@@ -407,6 +456,11 @@ void UAttributeSet::InitFromMetaDataTable(const UDataTable* DataTable)
 	}
 
 	PrintDebug();
+}
+
+AActor* UAttributeSet::GetOwningActor() const
+{
+	return CastChecked<AActor>(GetOuter());
 }
 
 UAbilitySystemComponent* UAttributeSet::GetOwningAbilitySystemComponent() const
@@ -491,7 +545,7 @@ TSubclassOf<UAttributeSet> FindBestAttributeClass(TArray<TSubclassOf<UAttributeS
  *	Each curve in the table represents a *single attribute's values for all levels*.
  *	At runtime, we want *all attribute values at given level*.
  *
- *	This code assumes that your curve data starts with a key of 1 and increases by 1 with each key.
+ *	This code assumes that your curve data starts with a key of 1.
  */
 void FAttributeSetInitterDiscreteLevels::PreloadAttributeSetData(const TArray<UCurveTable*>& CurveData)
 {
@@ -558,46 +612,25 @@ void FAttributeSetInitterDiscreteLevels::PreloadAttributeSetData(const TArray<UC
 			FName ClassFName = FName(*ClassName);
 			FAttributeSetDefaultsCollection& DefaultCollection = Defaults.FindOrAdd(ClassFName);
 
-			// Check our curve to make sure the keys match the expected format
-			int32 ExpectedLevel = 1;
-			bool bShouldSkip = false;
-			for (auto KeyIter = Curve->GetKeyHandleIterator(); KeyIter; ++KeyIter)
+			float FirstLevelFloat = 0.f;
+			float LastLevelFloat = 0.f;
+			Curve->GetTimeRange(FirstLevelFloat, LastLevelFloat);
+
+			int32 FirstLevel = FMath::RoundToInt32(FirstLevelFloat);
+			int32 LastLevel = FMath::RoundToInt32(LastLevelFloat);
+
+			// Only log these as warnings, as they're not deal breakers.
+			if (FirstLevel != 1)
 			{
-				const FKeyHandle& KeyHandle = *KeyIter;
-				if (KeyHandle == FKeyHandle::Invalid())
-				{
-					ABILITY_LOG(Verbose, TEXT("FAttributeSetInitterDiscreteLevels::PreloadAttributeSetData Data contains an invalid key handle (row: %s)"), *RowName);
-					bShouldSkip = true;
-					break;
-				}
-
-				int32 Level = Curve->GetKeyTimeValuePair(KeyHandle).Key;
-				if (ExpectedLevel != Level)
-				{
-					ABILITY_LOG(Verbose, TEXT("FAttributeSetInitterDiscreteLevels::PreloadAttributeSetData Keys are expected to start at 1 and increase by 1 for every key (row: %s)"), *RowName);
-					bShouldSkip = true;
-					break;
-				}
-
-				++ExpectedLevel;
-			}
-
-			if (bShouldSkip)
-			{
+				ABILITY_LOG(Warning, TEXT("FAttributeSetInitterDiscreteLevels::PreloadAttributeSetData First level should be 1"));
 				continue;
 			}
 
-			int32 LastLevel = Curve->GetKeyTime(Curve->GetLastKeyHandle());
 			DefaultCollection.LevelData.SetNum(FMath::Max(LastLevel, DefaultCollection.LevelData.Num()));
 
-			//At this point we know the Name of this "class"/"group", the AttributeSet, and the Property Name. Now loop through the values on the curve to get the attribute default value at each level.
-			for (auto KeyIter = Curve->GetKeyHandleIterator(); KeyIter; ++KeyIter)
+			for (int32 Level = 1; Level <= LastLevel; ++Level)
 			{
-				const FKeyHandle& KeyHandle = *KeyIter;
-
-				TPair<float, float> LevelValuePair = Curve->GetKeyTimeValuePair(KeyHandle);
-				int32 Level = LevelValuePair.Key;
-				float Value = LevelValuePair.Value;
+				float Value = Curve->Eval(float(Level));
 
 				FAttributeSetDefaults& SetDefaults = DefaultCollection.LevelData[Level-1];
 
@@ -755,3 +788,4 @@ bool FAttributeSetInitterDiscreteLevels::IsSupportedProperty(FProperty* Property
 {
 	return (Property && (CastField<FNumericProperty>(Property) || FGameplayAttribute::IsGameplayAttributeDataProperty(Property)));
 }
+

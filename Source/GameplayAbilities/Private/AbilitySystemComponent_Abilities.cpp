@@ -8,6 +8,7 @@
 #include "UObject/Class.h"
 #include "EngineDefines.h"
 #include "Engine/NetSerialization.h"
+#include "Engine/World.h"
 #include "Templates/SubclassOf.h"
 #include "Components/InputComponent.h"
 #include "GameplayTagContainer.h"
@@ -45,6 +46,8 @@ DECLARE_CYCLE_STAT(TEXT("AbilitySystemComp ServerEndAbility"), STAT_AbilitySyste
 CSV_DECLARE_CATEGORY_MODULE_EXTERN(CORE_API, Basic);
 
 static TAutoConsoleVariable<float> CVarReplayMontageErrorThreshold(TEXT("replay.MontageErrorThreshold"), 0.5f, TEXT("Tolerance level for when montage playback position correction occurs in replays"));
+static TAutoConsoleVariable<bool> CVarAbilitySystemSetActivationInfoMultipleTimes(TEXT("AbilitySystem.SetActivationInfoMultipleTimes"), false, TEXT("Set this to true if some replicated Gameplay Abilities aren't setting their owning actors correctly"));
+static TAutoConsoleVariable<bool> CVarGasFixClientSideMontageBlendOutTime(TEXT("AbilitySystem.Fix.ClientSideMontageBlendOutTime"), true, TEXT("Enable a fix to replicate the Montage BlendOutTime for (recently) stopped Montages"));
 
 void UAbilitySystemComponent::InitializeComponent()
 {
@@ -55,12 +58,11 @@ void UAbilitySystemComponent::InitializeComponent()
 	InitAbilityActorInfo(Owner, Owner);	// Default init to our outer owner
 
 	// cleanup any bad data that may have gotten into SpawnedAttributes
-	TArray<UAttributeSet*>& SpawnedAttributesRef = GetSpawnedAttributes_Mutable();
-	for (int32 Idx = SpawnedAttributesRef.Num()-1; Idx >= 0; --Idx)
+	for (int32 Idx = SpawnedAttributes.Num()-1; Idx >= 0; --Idx)
 	{
-		if (SpawnedAttributesRef[Idx] == nullptr)
+		if (SpawnedAttributes[Idx] == nullptr)
 		{
-			SpawnedAttributesRef.RemoveAt(Idx);
+			SpawnedAttributes.RemoveAt(Idx);
 		}
 	}
 
@@ -72,10 +74,11 @@ void UAbilitySystemComponent::InitializeComponent()
 		UAttributeSet* Set = Cast<UAttributeSet>(Obj);
 		if (Set)  
 		{
-			SpawnedAttributesRef.AddUnique(Set);
-			bIsNetDirty = true;
+			SpawnedAttributes.AddUnique(Set);
 		}
 	}
+
+	SetSpawnedAttributesListDirty();
 }
 
 void UAbilitySystemComponent::UninitializeComponent()
@@ -122,7 +125,7 @@ void UAbilitySystemComponent::TickComponent(float DeltaTime, enum ELevelTick Tic
 	for (UAttributeSet* AttributeSet : GetSpawnedAttributes())
 	{
 		ITickableAttributeSetInterface* TickableSet = Cast<ITickableAttributeSetInterface>(AttributeSet);
-		if (TickableSet)
+		if (TickableSet && TickableSet->ShouldTick())
 		{
 			TickableSet->Tick(DeltaTime);
 		}
@@ -157,7 +160,19 @@ void UAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActor*
 		{
 			if (Spec.Ability)
 			{
-				Spec.Ability->OnAvatarSet(AbilityActorInfo.Get(), Spec);
+				if (Spec.Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor)
+				{
+					UGameplayAbility* AbilityInstance = Spec.GetPrimaryInstance();
+					// If we don't have the ability instance, it was either already destroyed or will get called on creation
+					if (AbilityInstance)
+					{
+						AbilityInstance->OnAvatarSet(AbilityActorInfo.Get(), Spec);
+					}
+				}
+				else
+				{
+					Spec.Ability->OnAvatarSet(AbilityActorInfo.Get(), Spec);
+				}
 			}
 		}
 	}
@@ -324,6 +339,15 @@ FGameplayAbilitySpecHandle UAbilitySystemComponent::GiveAbilityAndActivateOnce(F
 			return FGameplayAbilitySpecHandle();
 		}
 	}
+	else if (GameplayEventData)
+	{
+		// Cache the GameplayEventData in the pending spec (if it was correctly queued)
+		FGameplayAbilitySpec& PendingSpec = AbilityPendingAdds.Last();
+		if (PendingSpec.Handle == AddedAbilityHandle)
+		{
+			PendingSpec.GameplayEventData = MakeShared<FGameplayEventData>(*GameplayEventData);
+		}
+	}
 
 	return AddedAbilityHandle;
 }
@@ -397,7 +421,6 @@ void UAbilitySystemComponent::ClearAllAbilities()
 
 	ActivatableAbilities.Items.Empty(ActivatableAbilities.Items.Num());
 	ActivatableAbilities.MarkArrayDirty();
-	bIsNetDirty = true;
 
 	CheckForClearedAbilities();
 }
@@ -425,7 +448,6 @@ void UAbilitySystemComponent::ClearAbility(const FGameplayAbilitySpecHandle& Han
 		return;
 	}
 
-	bIsNetDirty = true;
 	for (int Idx = 0; Idx < AbilityPendingAdds.Num(); ++Idx)
 	{
 		if (AbilityPendingAdds[Idx].Handle == Handle)
@@ -478,6 +500,22 @@ void UAbilitySystemComponent::OnGiveAbility(FGameplayAbilitySpec& Spec)
 		if (Spec.NonReplicatedInstances.Num() == 0)
 		{
 			CreateNewInstanceOfAbility(Spec, SpecAbility);
+		}
+	}
+
+	// If this Ability Spec specified that it was created from an Active Gameplay Effect, then link the handle to the Active Gameplay Effect.
+	if (Spec.GameplayEffectHandle.IsValid())
+	{
+		UAbilitySystemComponent* SourceASC = Spec.GameplayEffectHandle.GetOwningAbilitySystemComponent();
+		UE_CLOG(!SourceASC, LogAbilitySystem, Error, TEXT("OnGiveAbility Spec '%s' GameplayEffectHandle had invalid Owning Ability System Component"), *Spec.GetDebugString());
+		if (SourceASC)
+		{
+			FActiveGameplayEffect* SourceActiveGE = SourceASC->ActiveGameplayEffects.GetActiveGameplayEffect(Spec.GameplayEffectHandle);
+			UE_CLOG(!SourceActiveGE, LogAbilitySystem, Error, TEXT("OnGiveAbility Spec '%s' GameplayEffectHandle was not active on Owning Ability System Component '%s'"), *Spec.GetDebugString(), *SourceASC->GetName());
+			if (SourceActiveGE)
+			{
+				SourceActiveGE->GrantedAbilityHandles.AddUnique(Spec.Handle);
+			}
 		}
 	}
 
@@ -567,7 +605,7 @@ void UAbilitySystemComponent::OnRemoveAbility(FGameplayAbilitySpec& Spec)
 				if (GetOwnerRole() == ROLE_Authority || Instance->GetReplicationPolicy() == EGameplayAbilityReplicationPolicy::ReplicateNo)
 				{
 					// Only destroy if we're the server or this isn't replicated. Can't destroy on the client or replication will fail when it replicates the end state
-					AllReplicatedInstancedAbilities.Remove(Instance);
+					RemoveReplicatedInstancedAbility(Instance);
 					Instance->MarkAsGarbage();
 				}
 			}
@@ -583,6 +621,22 @@ void UAbilitySystemComponent::OnRemoveAbility(FGameplayAbilitySpec& Spec)
 	else
 	{
 		Spec.Ability->OnRemoveAbility(AbilityActorInfo.Get(), Spec);
+	}
+
+	// If this Ability Spec specified that it was created from an Active Gameplay Effect, then unlink the handle to the Active Gameplay Effect.
+	// Note: It's possible (maybe even likely) that the ActiveGE is no longer considered active by this point.
+	if (Spec.GameplayEffectHandle.IsValid())
+	{
+		UAbilitySystemComponent* SourceASC = Spec.GameplayEffectHandle.GetOwningAbilitySystemComponent();
+		UE_CLOG(!SourceASC, LogAbilitySystem, Error, TEXT("OnRemoveAbility Spec '%s' GameplayEffectHandle had invalid Owning Ability System Component"), *Spec.GetDebugString());
+		if (SourceASC)
+		{
+			FActiveGameplayEffect* SourceActiveGE = SourceASC->ActiveGameplayEffects.GetActiveGameplayEffect(Spec.GameplayEffectHandle);
+			if (SourceActiveGE)
+			{
+				SourceActiveGE->GrantedAbilityHandles.Remove(Spec.Handle);
+			}
+		}
 	}
 
 	Spec.ReplicatedInstances.Empty();
@@ -638,13 +692,19 @@ void UAbilitySystemComponent::CheckForClearedAbilities()
 		// We leave around the empty trigger stub, it's likely to be added again
 	}
 
-	for (int32 i = 0; i < AllReplicatedInstancedAbilities.Num(); i++)
+	TArray<TObjectPtr<UGameplayAbility>>& ReplicatedAbilities = GetReplicatedInstancedAbilities_Mutable();
+	for (int32 i = 0; i < ReplicatedAbilities.Num(); i++)
 	{
-		UGameplayAbility* Ability = AllReplicatedInstancedAbilities[i];
+		UGameplayAbility* Ability = ReplicatedAbilities[i];
 
 		if (!IsValid(Ability))
 		{
-			AllReplicatedInstancedAbilities.RemoveAt(i);
+			if (IsUsingRegisteredSubObjectList())
+			{
+				RemoveReplicatedSubObject(Ability);
+			}
+
+			ReplicatedAbilities.RemoveAt(i);
 			i--;
 		}
 	}
@@ -652,7 +712,9 @@ void UAbilitySystemComponent::CheckForClearedAbilities()
 	// Clear any out of date ability spec handles on active gameplay effects
 	for (FActiveGameplayEffect& ActiveGE : &ActiveGameplayEffects)
 	{
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		for (FGameplayAbilitySpecDef& AbilitySpec : ActiveGE.Spec.GrantedAbilitySpecs)
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		{
 			if (AbilitySpec.AssignedHandle.IsValid() && FindAbilitySpecFromHandle(AbilitySpec.AssignedHandle) == nullptr)
 			{
@@ -711,7 +773,7 @@ void UAbilitySystemComponent::DecrementAbilityListLock()
 		{
 			if (Spec.bActivateOnce)
 			{
-				GiveAbilityAndActivateOnce(Spec);
+				GiveAbilityAndActivateOnce(Spec, Spec.GameplayEventData.Get());
 			}
 			else
 			{
@@ -726,42 +788,40 @@ void UAbilitySystemComponent::DecrementAbilityListLock()
 	}
 }
 
-FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromHandle(FGameplayAbilitySpecHandle Handle)
+FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromHandle(FGameplayAbilitySpecHandle Handle) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_FindAbilitySpecFromHandle);
 
-	for (FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
+	for (const FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
 	{
 		if (Spec.Handle == Handle)
 		{
-			return &Spec;
+			return const_cast<FGameplayAbilitySpec*>(&Spec);
 		}
 	}
 
 	return nullptr;
 }
 
-FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromGEHandle(FActiveGameplayEffectHandle Handle)
+FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromGEHandle(FActiveGameplayEffectHandle Handle) const
 {
-	for (FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
-	{
-		if (Spec.GameplayEffectHandle == Handle)
-		{
-			return &Spec;
-		}
-	}
 	return nullptr;
 }
 
-FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromClass(TSubclassOf<UGameplayAbility> InAbilityClass)
+FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromClass(TSubclassOf<UGameplayAbility> InAbilityClass) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_FindAbilitySpecFromHandle);
 
-	for (FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
+	for (const FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
 	{
+		if (Spec.Ability == nullptr)
+		{
+			continue;
+		}
+
 		if (Spec.Ability->GetClass() == InAbilityClass)
 		{
-			return &Spec;
+			return const_cast<FGameplayAbilitySpec*>(&Spec);
 		}
 	}
 
@@ -775,7 +835,6 @@ void UAbilitySystemComponent::MarkAbilitySpecDirty(FGameplayAbilitySpec& Spec, b
 		// Don't mark dirty for specs that are server only unless it was an add/remove
 		if (!(Spec.Ability && Spec.Ability->NetExecutionPolicy == EGameplayAbilityNetExecutionPolicy::ServerOnly && !WasAddOrRemove))
 		{
-			bIsNetDirty = true;
 			ActivatableAbilities.MarkItemDirty(Spec);
 		}
 		AbilitySpecDirtiedCallbacks.Broadcast(Spec);
@@ -787,15 +846,15 @@ void UAbilitySystemComponent::MarkAbilitySpecDirty(FGameplayAbilitySpec& Spec, b
 	}
 }
 
-FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromInputID(int32 InputID)
+FGameplayAbilitySpec* UAbilitySystemComponent::FindAbilitySpecFromInputID(int32 InputID) const
 {
 	if (InputID != INDEX_NONE)
 	{
-		for (FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
+		for (const FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
 		{
 			if (Spec.InputID == InputID)
 			{
-				return &Spec;
+				return const_cast<FGameplayAbilitySpec*>(&Spec);
 			}
 		}
 	}
@@ -969,7 +1028,7 @@ UGameplayAbility* UAbilitySystemComponent::CreateNewInstanceOfAbility(FGameplayA
 	if (AbilityInstance->GetReplicationPolicy() != EGameplayAbilityReplicationPolicy::ReplicateNo)
 	{
 		Spec.ReplicatedInstances.Add(AbilityInstance);
-		AllReplicatedInstancedAbilities.Add(AbilityInstance);
+		AddReplicatedInstancedAbility(AbilityInstance);
 	}
 	else
 	{
@@ -994,7 +1053,7 @@ void UAbilitySystemComponent::NotifyAbilityEnded(FGameplayAbilitySpecHandle Hand
 	ENetRole OwnerRole = GetOwnerRole();
 
 	// If AnimatingAbility ended, clear the pointer
-	if (LocalAnimMontageInfo.AnimatingAbility == Ability)
+	if (LocalAnimMontageInfo.AnimatingAbility.Get() == Ability)
 	{
 		ClearAnimatingAbility(Ability);
 	}
@@ -1020,7 +1079,7 @@ void UAbilitySystemComponent::NotifyAbilityEnded(FGameplayAbilitySpecHandle Hand
 			if (OwnerRole == ROLE_Authority)
 			{
 				Spec->ReplicatedInstances.Remove(Ability);
-				AllReplicatedInstancedAbilities.Remove(Ability);
+				RemoveReplicatedInstancedAbility(Ability);
 				Ability->MarkAsGarbage();
 			}
 		}
@@ -1209,7 +1268,6 @@ void UAbilitySystemComponent::UnBlockAbilitiesWithTags(const FGameplayTagContain
 
 void UAbilitySystemComponent::BlockAbilityByInputID(int32 InputID)
 {
-	bIsNetDirty = true;
 	const TArray<uint8>& ConstBlockedAbilityBindings = GetBlockedAbilityBindings();
 	if (InputID >= 0 && InputID < ConstBlockedAbilityBindings.Num())
 	{
@@ -1219,7 +1277,6 @@ void UAbilitySystemComponent::BlockAbilityByInputID(int32 InputID)
 
 void UAbilitySystemComponent::UnBlockAbilityByInputID(int32 InputID)
 {
-	bIsNetDirty = true;
 	const TArray<uint8>& ConstBlockedAbilityBindings = GetBlockedAbilityBindings();
 	if (InputID >= 0 && InputID < ConstBlockedAbilityBindings.Num() && ConstBlockedAbilityBindings[InputID] > 0)
 	{
@@ -1384,6 +1441,7 @@ bool UAbilitySystemComponent::TryActivateAbility(FGameplayAbilitySpecHandle Abil
 	{
 		if (bAllowRemoteActivation)
 		{
+			FScopedCanActivateAbilityLogEnabler LogEnabler;
 			if (Ability->CanActivateAbility(AbilityToActivate, ActorInfo, nullptr, nullptr, &FailureTags))
 			{
 				// No prediction key, server will assign a server-generated key
@@ -1514,21 +1572,27 @@ bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHan
 		return false;
 	}
 
-	// If it's instance once the instanced ability will be set, otherwise it will be null
+	// If it's an instanced one, the instanced ability will be set, otherwise it will be null
 	UGameplayAbility* InstancedAbility = Spec->GetPrimaryInstance();
 
-	const FGameplayTagContainer* SourceTags = nullptr;
-	const FGameplayTagContainer* TargetTags = nullptr;
-	if (TriggerEventData != nullptr)
+	if (TriggerEventData)
 	{
-		SourceTags = &TriggerEventData->InstigatorTags;
-		TargetTags = &TriggerEventData->TargetTags;
+		UGameplayAbility* AbilitySource = InstancedAbility ? InstancedAbility : Ability;
+		if (!AbilitySource->ShouldAbilityRespondToEvent(ActorInfo, TriggerEventData))
+		{
+			NotifyAbilityFailed(Handle, AbilitySource, InternalTryActivateAbilityFailureTags);
+			return false;
+		}
 	}
 
 	{
+		const FGameplayTagContainer* SourceTags = TriggerEventData ? &TriggerEventData->InstigatorTags : nullptr;
+		const FGameplayTagContainer* TargetTags = TriggerEventData ? &TriggerEventData->TargetTags : nullptr;
+
 		// If we have an instanced ability, call CanActivateAbility on it.
 		// Otherwise we always do a non instanced CanActivateAbility check using the CDO of the Ability.
 		UGameplayAbility* const CanActivateAbilitySource = InstancedAbility ? InstancedAbility : Ability;
+		FScopedCanActivateAbilityLogEnabler LogEnabler;
 
 		if (!CanActivateAbilitySource->CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, &InternalTryActivateAbilityFailureTags))
 		{
@@ -1561,16 +1625,6 @@ bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHan
 	{
 		ABILITY_LOG(Warning, TEXT("InternalTryActivateAbility called but instanced ability is missing! NetMode: %d. Ability: %s"), (int32)NetMode, *Ability->GetName());
 		return false;
-	}
-
-	// make sure we do not incur a roll over if we go over the uint8 max, this will need to be updated if the var size changes
-	if (LIKELY(Spec->ActiveCount < UINT8_MAX))
-	{
-		Spec->ActiveCount++;
-	}
-	else
-	{
-		ABILITY_LOG(Warning, TEXT("TryActivateAbility %s called when the Spec->ActiveCount (%d) >= UINT8_MAX"), *Ability->GetName(), (int32)Spec->ActiveCount)
 	}
 
 	// Setup a fresh ActivationInfo for this AbilitySpec.
@@ -1703,7 +1757,11 @@ bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHan
 			*OutInstancedAbility = InstancedAbility;
 		}
 
-		InstancedAbility->SetCurrentActivationInfo(ActivationInfo);	// Need to push this to the ability if it was instanced.
+		// UGameplayAbility::PreActivate actually sets this internally (via SetCurrentInfo) which happens after replication (this is only set locally).  Let's cautiously remove this code.
+		if (CVarAbilitySystemSetActivationInfoMultipleTimes.GetValueOnGameThread())
+		{
+			InstancedAbility->SetCurrentActivationInfo(ActivationInfo);	// Need to push this to the ability if it was instanced.
+		}
 	}
 
 	MarkAbilitySpecDirty(*Spec);
@@ -2021,6 +2079,7 @@ void UAbilitySystemComponent::ClientActivateAbilityFailed_Implementation(FGamepl
 	{
 		if (Ability->CurrentActivationInfo.GetActivationPredictionKey().Current == PredictionKey)
 		{
+			Ability->CurrentActivationInfo.SetActivationRejected();
 			Ability->K2_EndAbility();
 		}
 	}
@@ -2105,9 +2164,6 @@ void UAbilitySystemComponent::ClientActivateAbilitySucceedWithEventData_Implemen
 	{
 		// We haven't already executed this ability at all, so kick it off.
 
-		// The spec will now be active, and we need to keep track on the client as well.  Since we cannot call TryActivateAbility, which will increment ActiveCount on the server, we have to do this here.
-		++Spec->ActiveCount;
-
 		if (PredictionKey.bIsServerInitiated)
 		{
 			// We have an active server key, set our key equal to it
@@ -2136,6 +2192,29 @@ void UAbilitySystemComponent::ClientActivateAbilitySucceedWithEventData_Implemen
 			AbilityToActivate->CallActivateAbility(Handle, AbilityActorInfo.Get(), Spec->ActivationInfo, nullptr, TriggerEventData.EventTag.IsValid() ? &TriggerEventData : nullptr);
 		}
 	}
+}
+
+bool UAbilitySystemComponent::HasActivatableTriggeredAbility(FGameplayTag Tag)
+{
+	TArray<FGameplayAbilitySpec> Specs = GetActivatableAbilities();
+	const FGameplayAbilityActorInfo* ActorInfo = AbilityActorInfo.Get();
+	for (const FGameplayAbilitySpec& Spec : Specs)
+	{
+		if (Spec.Ability == nullptr)
+		{
+			continue;
+		}
+
+		TArray<FAbilityTriggerData>& Triggers = Spec.Ability->AbilityTriggers;
+		for (const FAbilityTriggerData& Data : Triggers)
+		{
+			if (Data.TriggerTag == Tag && Spec.Ability->CanActivateAbility(Spec.Handle, ActorInfo))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool UAbilitySystemComponent::TriggerAbilityFromGameplayEvent(FGameplayAbilitySpecHandle Handle, FGameplayAbilityActorInfo* ActorInfo, FGameplayTag EventTag, const FGameplayEventData* Payload, UAbilitySystemComponent& Component)
@@ -2169,14 +2248,7 @@ bool UAbilitySystemComponent::TriggerAbilityFromGameplayEvent(FGameplayAbilitySp
 	TempEventData.EventTag = EventTag;
 
 	// Run on the non-instanced ability
-	if (Ability->ShouldAbilityRespondToEvent(ActorInfo, &TempEventData))
-	{
-		if (InternalTryActivateAbility(Handle, ScopedPredictionKey, nullptr, nullptr, &TempEventData))
-		{
-			return true;
-		}
-	}
-	return false;
+	return InternalTryActivateAbility(Handle, ScopedPredictionKey, nullptr, nullptr, &TempEventData);
 }
 
 bool UAbilitySystemComponent::GetUserAbilityActivationInhibited() const
@@ -2238,7 +2310,9 @@ int32 UAbilitySystemComponent::HandleGameplayEvent(FGameplayTag EventTag, const 
 
 	if (FGameplayEventMulticastDelegate* Delegate = GenericGameplayEventCallbacks.Find(EventTag))
 	{
-		Delegate->Broadcast(Payload);
+		// Make a copy before broadcasting to prevent memory stomping
+		FGameplayEventMulticastDelegate DelegateCopy = *Delegate;
+		DelegateCopy.Broadcast(Payload);
 	}
 
 	// Make a copy in case it changes due to callbacks
@@ -2308,7 +2382,7 @@ void UAbilitySystemComponent::MonitoredTagChanged(const FGameplayTag Tag, int32 
 
 			if (!Spec || !HasNetworkAuthorityToActivateTriggeredAbility(*Spec))
 			{
-				return;
+				continue;
 			}
 
 			if (Spec->Ability)
@@ -2436,7 +2510,6 @@ void UAbilitySystemComponent::BindAbilityActivationToInputComponent(UInputCompon
 void UAbilitySystemComponent::SetBlockAbilityBindingsArray(FGameplayAbilityInputBinds BindInfo)
 {
 	UEnum* EnumBinds = BindInfo.GetBindEnum();
-	bIsNetDirty = true;
 	GetBlockedAbilityBindings_Mutable().SetNumZeroed(EnumBinds->NumEnums());
 }
 
@@ -2676,12 +2749,15 @@ float UAbilitySystemComponent::PlayMontage(UGameplayAbility* InAnimatingAbility,
 		Duration = AnimInstance->Montage_Play(NewAnimMontage, InPlayRate, EMontagePlayReturnType::MontageLength, StartTimeSeconds);
 		if (Duration > 0.f)
 		{
-			if (LocalAnimMontageInfo.AnimatingAbility && LocalAnimMontageInfo.AnimatingAbility != InAnimatingAbility)
+			if (const UGameplayAbility* RawAnimatingAbility = LocalAnimMontageInfo.AnimatingAbility.Get())
 			{
-				// The ability that was previously animating will have already gotten the 'interrupted' callback.
-				// It may be a good idea to make this a global policy and 'cancel' the ability.
-				// 
-				// For now, we expect it to end itself when this happens.
+				if (RawAnimatingAbility != InAnimatingAbility)
+				{
+					// The ability that was previously animating will have already gotten the 'interrupted' callback.
+					// It may be a good idea to make this a global policy and 'cancel' the ability.
+					// 
+					// For now, we expect it to end itself when this happens.
+				}
 			}
 
 			if (NewAnimMontage->HasRootMotion() && AnimInstance->GetOwningActor())
@@ -2707,8 +2783,10 @@ float UAbilitySystemComponent::PlayMontage(UGameplayAbility* InAnimatingAbility,
 				AnimInstance->Montage_JumpToSection(StartSectionName, NewAnimMontage);
 			}
 
-			// Replicate to non owners
-			if (IsOwnerActorAuthoritative())
+			// Replicate for non-owners and for replay recordings
+			// The data we set from GetRepAnimMontageInfo_Mutable() is used both by the server to replicate to clients and by clients to record replays.
+			// We need to set this data for recording clients because there exists network configurations where an abilities montage data will not replicate to some clients (for example: if the client is an autonomous proxy.)
+			if (ShouldRecordMontageReplication())
 			{
 				FGameplayAbilityRepAnimMontage& MutableRepAnimMontageInfo = GetRepAnimMontageInfo_Mutable();
 
@@ -2725,8 +2803,12 @@ float UAbilitySystemComponent::PlayMontage(UGameplayAbility* InAnimatingAbility,
 
 				// Update parameters that change during Montage life time.
 				AnimMontage_UpdateReplicatedData();
+			}
 
-				// Force net update on our avatar actor
+			// Replicate to non-owners
+			if (IsOwnerActorAuthoritative())
+			{
+				// Force net update on our avatar actor.
 				if (AbilityActorInfo->AvatarActor != nullptr)
 				{
 					AbilityActorInfo->AvatarActor->ForceNetUpdate();
@@ -2765,20 +2847,20 @@ float UAbilitySystemComponent::PlayMontageSimulated(UAnimMontage* NewAnimMontage
 
 void UAbilitySystemComponent::AnimMontage_UpdateReplicatedData()
 {
-	check(IsOwnerActorAuthoritative());
+	check(ShouldRecordMontageReplication());
 
 	AnimMontage_UpdateReplicatedData(GetRepAnimMontageInfo_Mutable());
 }
 
 void UAbilitySystemComponent::AnimMontage_UpdateReplicatedData(FGameplayAbilityRepAnimMontage& OutRepAnimMontageInfo)
 {
-	UAnimInstance* AnimInstance = AbilityActorInfo.IsValid() ? AbilityActorInfo->GetAnimInstance() : nullptr;
+	const UAnimInstance* AnimInstance = AbilityActorInfo.IsValid() ? AbilityActorInfo->GetAnimInstance() : nullptr;
 	if (AnimInstance && LocalAnimMontageInfo.AnimMontage)
 	{
 		OutRepAnimMontageInfo.AnimMontage = LocalAnimMontageInfo.AnimMontage;
 
 		// Compressed Flags
-		bool bIsStopped = AnimInstance->Montage_GetIsStopped(LocalAnimMontageInfo.AnimMontage);
+		const bool bIsStopped = AnimInstance->Montage_GetIsStopped(LocalAnimMontageInfo.AnimMontage);
 
 		if (!bIsStopped)
 		{
@@ -2791,6 +2873,25 @@ void UAbilitySystemComponent::AnimMontage_UpdateReplicatedData(FGameplayAbilityR
 		{
 			// Set this prior to calling UpdateShouldTick, so we start ticking if we are playing a Montage
 			OutRepAnimMontageInfo.IsStopped = bIsStopped;
+
+			if (bIsStopped)
+			{
+				// Use AnyThread because GetValueOnGameThread will fail check() when doing replays
+				constexpr bool bForceGameThreadValue = true;
+				if (CVarGasFixClientSideMontageBlendOutTime.GetValueOnAnyThread(bForceGameThreadValue))
+				{
+					// Replicate blend out time. This requires a manual search since Montage_GetBlendTime will fail
+					// in GetActiveInstanceForMontage for Montages that are stopped.
+					for (const FAnimMontageInstance* MontageInstance : AnimInstance->MontageInstances)
+					{
+						if (MontageInstance->Montage == LocalAnimMontageInfo.AnimMontage)
+						{
+							OutRepAnimMontageInfo.BlendTime = MontageInstance->GetBlendTime();
+							break;
+						}
+					}
+				}
+			}
 
 			// When we start or stop an animation, update the clients right away for the Avatar Actor
 			if (AbilityActorInfo->AvatarActor != nullptr)
@@ -2957,7 +3058,7 @@ void UAbilitySystemComponent::OnRep_ReplicatedAnimMontage()
 					const int32 CurrentSectionID = LocalAnimMontageInfo.AnimMontage->GetSectionIndexFromPosition(AnimInstance->Montage_GetPosition(LocalAnimMontageInfo.AnimMontage));
 					if ((CurrentSectionID != RepSectionID) && (CurrentSectionID != RepNextSectionID))
 					{
-						// Client is in a wrong section, teleport him into the begining of the right section
+						// Client is in a wrong section, teleport it into the beginning of the right section
 						const float SectionStartTime = LocalAnimMontageInfo.AnimMontage->GetAnimCompositeSection(RepSectionID).GetTime();
 						AnimInstance->Montage_SetPosition(LocalAnimMontageInfo.AnimMontage, SectionStartTime);
 					}
@@ -3020,7 +3121,7 @@ void UAbilitySystemComponent::StopMontageIfCurrent(const UAnimMontage& Montage, 
 
 void UAbilitySystemComponent::ClearAnimatingAbility(UGameplayAbility* Ability)
 {
-	if (LocalAnimMontageInfo.AnimatingAbility == Ability)
+	if (LocalAnimMontageInfo.AnimatingAbility.Get() == Ability)
 	{
 		Ability->SetCurrentMontage(nullptr);
 		LocalAnimMontageInfo.AnimatingAbility = nullptr;
@@ -3033,7 +3134,10 @@ void UAbilitySystemComponent::CurrentMontageJumpToSection(FName SectionName)
 	if ((SectionName != NAME_None) && AnimInstance && LocalAnimMontageInfo.AnimMontage)
 	{
 		AnimInstance->Montage_JumpToSection(SectionName, LocalAnimMontageInfo.AnimMontage);
-		if (IsOwnerActorAuthoritative())
+
+		// This data is needed for replication on the server and recording replays on clients.
+		// We need to set GetRepAnimMontageInfo_Mutable on replay recording clients because this data is NOT replicated to all clients (for example, it is NOT replicated to autonomous proxy clients.)
+		if (ShouldRecordMontageReplication())
 		{
 			FGameplayAbilityRepAnimMontage& MutableRepAnimMontageInfo = GetRepAnimMontageInfo_Mutable();
 
@@ -3046,7 +3150,9 @@ void UAbilitySystemComponent::CurrentMontageJumpToSection(FName SectionName)
 
 			AnimMontage_UpdateReplicatedData();
 		}
-		else
+		
+		// If we are NOT the authority, then let the server handling jumping the montage.
+		if (!IsOwnerActorAuthoritative())
 		{
 			ServerCurrentMontageJumpToSectionName(LocalAnimMontageInfo.AnimMontage, SectionName);
 		}
@@ -3282,12 +3388,12 @@ void UAbilitySystemComponent::SetMontageRepAnimPositionMethod(ERepAnimPositionMe
 
 bool UAbilitySystemComponent::IsAnimatingAbility(UGameplayAbility* InAbility) const
 {
-	return (LocalAnimMontageInfo.AnimatingAbility == InAbility);
+	return (LocalAnimMontageInfo.AnimatingAbility.Get() == InAbility);
 }
 
 UGameplayAbility* UAbilitySystemComponent::GetAnimatingAbility()
 {
-	return LocalAnimMontageInfo.AnimatingAbility;
+	return LocalAnimMontageInfo.AnimatingAbility.Get();
 }
 
 void UAbilitySystemComponent::ConfirmAbilityTargetData(FGameplayAbilitySpecHandle AbilityHandle, FPredictionKey AbilityOriginalPredictionKey, const FGameplayAbilityTargetDataHandle& TargetData, const FGameplayTag& ApplicationTag)

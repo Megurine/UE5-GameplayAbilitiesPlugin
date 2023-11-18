@@ -18,7 +18,9 @@ struct GAMEPLAYABILITIES_API FAggregatorEvaluateParameters
 		, IncludePredictiveMods(false) 
 	{}
 
+	/** This tag container is expected to hold all aggregrated tags of the gameplay effect's source: from ability system component, effect spec, ability, calculation specific tags, etc. */
 	const FGameplayTagContainer* SourceTags;
+	/** This tag container is expected to hold all aggregrated tags of the gameplay effect's target: from ability system component, effect spec, ability, calculation specific tags, etc. */
 	const FGameplayTagContainer* TargetTags;
 
 	/** Any mods with one of these handles will be ignored during evaluation */
@@ -58,7 +60,7 @@ struct GAMEPLAYABILITIES_API FAggregatorMod
 
 	FActiveGameplayEffectHandle ActiveHandle;	// Handle of the active GameplayEffect we are tied to (if any)
 	bool IsPredicted;
-
+	
 	int32 OverridePriority;
 	
 	bool Qualifies() const { return IsQualified; }
@@ -172,7 +174,7 @@ struct GAMEPLAYABILITIES_API FAggregatorModChannel
 	static float SumMods(const TArray<FAggregatorMod>& InMods, float Bias, const FAggregatorEvaluateParameters& Parameters);
 	//static float TindaSumMods(const TArray<FAggregatorMod>& InMods, float Bias, const FAggregatorEvaluateParameters& Parameters);
 	//static float GetSumModsUnderValue(const TArray<FAggregatorMod>& InMods, float Value, float& SumDivided);
-
+	
 private:
 
 	/** Collection of modifers within the channel, organized by modifier operation */
