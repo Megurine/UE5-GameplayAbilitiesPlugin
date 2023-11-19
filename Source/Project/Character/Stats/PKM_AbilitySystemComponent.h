@@ -33,6 +33,16 @@ public:
 		EffectClassFilter = _EffectClassFilter;
 		allowChildClass = _allowChildClass;
 	}
+
+	bool operator==(const FGameplayEffectClassFilter& Other) const
+	{
+		return Delegate == Other.Delegate && EffectClassFilter == Other.EffectClassFilter && allowChildClass == Other.allowChildClass;
+	}
+
+	bool operator!=(const FGameplayEffectClassFilter& Other) const
+	{
+		return !(*this == Other);
+	}
 };
 
 USTRUCT(BlueprintType)

@@ -627,6 +627,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectAdd(UAbilitySystemCompon
 		EffectClass = Data.Def->GetClass();
 	}
 
+	TArray<FGameplayEffectClassFilter> DelegatesTempToExecute;
 	bool atLeastOneRemoved = false;
 	for (size_t i = 0; i < OnActiveGameplayEffectAddedDelegates.Num(); i++)
 	{
@@ -653,7 +654,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectAdd(UAbilitySystemCompon
 
 			if (filterValid)
 			{
-				OnActiveGameplayEffectAddedDelegates[i].Delegate.Execute(EffectClass, Handle, true);
+				DelegatesTempToExecute.Add(OnActiveGameplayEffectAddedDelegates[i]);
 			}
 		}
 		else
@@ -664,6 +665,16 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectAdd(UAbilitySystemCompon
 			i--;
 		}
 	}
+
+	//We process the temp delegate array to check if they are still valid since the execution of previous delegate
+	for (size_t i = 0; i < DelegatesTempToExecute.Num(); i++)
+	{
+		if (OnActiveGameplayEffectAddedDelegates.Contains(DelegatesTempToExecute[i]))
+		{
+			DelegatesTempToExecute[i].Delegate.Execute(EffectClass, Handle, true);
+		}
+	}
+
 	if (atLeastOneRemoved)
 	{
 		RemoveOnActiveGameplayEffectAddedDelegateHandle();
@@ -692,6 +703,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectRemove(const FActiveGame
 		EffectClass = EffectRemoved.Spec.Def->GetClass();
 	}
 
+	TArray<FGameplayEffectClassFilter> DelegatesTempToExecute;
 	bool atLeastOneRemoved = false;
 	for (size_t i = 0; i < OnActiveGameplayEffectAddedDelegates.Num(); i++)
 	{
@@ -718,7 +730,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectRemove(const FActiveGame
 
 			if (filterValid)
 			{
-				OnActiveGameplayEffectAddedDelegates[i].Delegate.Execute(EffectClass, EffectRemoved.Handle, false);
+				DelegatesTempToExecute.Add(OnActiveGameplayEffectAddedDelegates[i]);
 			}
 		}
 		else
@@ -729,6 +741,16 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectRemove(const FActiveGame
 			i--;
 		}
 	}
+
+	//We process the temp delegate array to check if they are still valid since the execution of previous delegate
+	for (size_t i = 0; i < DelegatesTempToExecute.Num(); i++)
+	{
+		if (OnActiveGameplayEffectAddedDelegates.Contains(DelegatesTempToExecute[i]))
+		{
+			DelegatesTempToExecute[i].Delegate.Execute(EffectClass, EffectRemoved.Handle, false);
+		}
+	}
+
 	if (atLeastOneRemoved)
 	{
 		RemoveOnActiveGameplayEffectAddedDelegateHandle();
