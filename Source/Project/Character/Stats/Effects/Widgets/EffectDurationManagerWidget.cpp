@@ -31,7 +31,7 @@ void UEffectDurationManagerWidget::NativeDestruct()
 	
 }
 
-void UEffectDurationManagerWidget::OnEffectAdded(TSubclassOf<UGameplayEffect> EffectClassFilter, FActiveGameplayEffectHandle handle, bool added)
+void UEffectDurationManagerWidget::OnEffectAdded(UObject* ObjectBound, TSubclassOf<UGameplayEffect> EffectClassFilter, FActiveGameplayEffectHandle handle, bool added)
 {
 	if (added)
 	{

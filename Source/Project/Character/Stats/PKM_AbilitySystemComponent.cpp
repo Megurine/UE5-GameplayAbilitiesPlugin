@@ -571,7 +571,7 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 
 		if (Delegates.Contains(DelegatesTempToExecute[i]))
 		{
-			DelegatesTempToExecute[i].Execute(newValues[i], oldValues[i], Data.ChangeDatas);
+			DelegatesTempToExecute[i].Execute(DelegatesTempToExecute[i].GetUObject(), newValues[i], oldValues[i], Data.ChangeDatas);
 		}
 	}
 
@@ -695,7 +695,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectAdd(UAbilitySystemCompon
 	{
 		if (OnActiveGameplayEffectAddedDelegates.Contains(DelegatesTempToExecute[i]))
 		{
-			DelegatesTempToExecute[i].Delegate.Execute(EffectClass, Handle, true);
+			DelegatesTempToExecute[i].Delegate.Execute(DelegatesTempToExecute[i].Delegate.GetUObject(), EffectClass, Handle, true);
 		}
 	}
 
@@ -771,7 +771,7 @@ void UPKM_AbilitySystemComponent::OnActiveGameplayEffectRemove(const FActiveGame
 	{
 		if (OnActiveGameplayEffectAddedDelegates.Contains(DelegatesTempToExecute[i]))
 		{
-			DelegatesTempToExecute[i].Delegate.Execute(EffectClass, EffectRemoved.Handle, false);
+			DelegatesTempToExecute[i].Delegate.Execute(DelegatesTempToExecute[i].Delegate.GetUObject(), EffectClass, EffectRemoved.Handle, false);
 		}
 	}
 
@@ -971,7 +971,7 @@ void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag Callback
 		if (OnGameplayTagEventDelegates.Contains(OnGameplayTagEventDelegatesTempToExecute[i]))
 		{
 			//UE_LOGFMT(LogTemp, Log, "MEGU Execute OnGameplayTagEvent to {o} for {t} from {f}", ("o", GetOwner()->GetName()), ("t", TriggerTag.ToString()), ("f", GetDebugStringUObject(OnGameplayTagEventDelegatesTempToExecute[i].Delegate.GetUObject())));
-			OnGameplayTagEventDelegatesTempToExecute[i].Delegate.Execute(CallbackTag, (TagOperation == EOnGameplayEffectTagCountOperation::ADDED), NewCount, TriggerTag);
+			OnGameplayTagEventDelegatesTempToExecute[i].Delegate.Execute(OnGameplayTagEventDelegatesTempToExecute[i].Delegate.GetUObject(), CallbackTag, (TagOperation == EOnGameplayEffectTagCountOperation::ADDED), NewCount, TriggerTag);
 		}
 	}
 

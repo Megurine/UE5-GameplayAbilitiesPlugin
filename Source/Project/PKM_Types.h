@@ -16,9 +16,9 @@ enum class EPKM_AttributesType : uint8
 	MAXIMUM = 2 UMETA(DisplayName = "Max"),
 };
 
-DECLARE_DYNAMIC_DELEGATE_ThreeParams(FAttributeValueChangeDelegate, float, newValue, float, oldValue, UAttributeChangeDatasObject*, changeDatas);
-DECLARE_DYNAMIC_DELEGATE_ThreeParams(FGameplayEffectAddedDelegate, TSubclassOf<UGameplayEffect>, EffectClassFilter, FActiveGameplayEffectHandle, handle, bool, added);
-DECLARE_DYNAMIC_DELEGATE_FourParams(FOnGameplayTagChanged, const FGameplayTag, Tag, bool, TagAdded, int32, Count, const FGameplayTag, TriggerTag);
+DECLARE_DYNAMIC_DELEGATE_FourParams(FAttributeValueChangeDelegate, UObject*, ObjectBound, float, newValue, float, oldValue, UAttributeChangeDatasObject*, changeDatas);
+DECLARE_DYNAMIC_DELEGATE_FourParams(FGameplayEffectAddedDelegate, UObject*, ObjectBound, TSubclassOf<UGameplayEffect>, EffectClassFilter, FActiveGameplayEffectHandle, handle, bool, added);
+DECLARE_DYNAMIC_DELEGATE_FiveParams(FOnGameplayTagChanged, UObject*, ObjectBound, const FGameplayTag, Tag, bool, TagAdded, int32, Count, const FGameplayTag, TriggerTag);
 
 UENUM(BlueprintType)
 enum class EAttachmentComponentSocket : uint8

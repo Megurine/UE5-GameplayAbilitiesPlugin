@@ -28,7 +28,7 @@ public :
 		void Init(UPKM_AbilitySystemComponent* AbilitySystemComp);
 
 	UFUNCTION()
-		void OnEffectAdded(TSubclassOf<UGameplayEffect> EffectClassFilter, FActiveGameplayEffectHandle handle, bool added);
+		void OnEffectAdded(UObject* ObjectBound, TSubclassOf<UGameplayEffect> EffectClassFilter, FActiveGameplayEffectHandle handle, bool added);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 		void AddEffectDurationWidgetToParentWidget(UEffectDurationWidget* EffectDurationWidget, EEffectWidgetVisibilityType WidgetVisibilityType);
