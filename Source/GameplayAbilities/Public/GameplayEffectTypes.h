@@ -979,8 +979,12 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FOnGameplayAttributeChange, float, const FG
 
 
 /** Temporary parameter struct used when an attribute has changed */
+USTRUCT()
 struct FOnAttributeChangeData
 {
+	GENERATED_USTRUCT_BODY()
+
+public:
 	FOnAttributeChangeData()
 		: NewValue(0.0f)
 		, OldValue(0.0f)
@@ -993,6 +997,8 @@ struct FOnAttributeChangeData
 	float	NewValue;
 	float	OldValue;
 	const FGameplayEffectModCallbackData* GEModData;
+
+	UPROPERTY()
 	UAttributeChangeDatasObject* ChangeDatas = nullptr;
 };
 

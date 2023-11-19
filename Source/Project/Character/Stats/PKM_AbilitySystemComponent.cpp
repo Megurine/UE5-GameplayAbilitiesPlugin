@@ -454,7 +454,15 @@ void UPKM_AbilitySystemComponent::BindFunctionToAttributeValueChange(EPKM_Attrib
 			AttributeValueChange.AddUObject(this, &UPKM_AbilitySystemComponent::OnAttributeValueChange);
 		}
 
-		AttributeValueChangeDelegates.Add(Attribute, InDelegate);
+		FArrayFAttributeValueChangeDelegate* ArrayStruct = AttributeValueChangeDelegates.Find(Attribute);
+		if (ArrayStruct)
+		{
+			ArrayStruct->Delegates.Add(InDelegate);
+		}
+		else
+		{
+			AttributeValueChangeDelegates.Add(Attribute, FArrayFAttributeValueChangeDelegate({ InDelegate }));
+		}
 	}
 }
 
@@ -463,10 +471,18 @@ void UPKM_AbilitySystemComponent::UnBindFunctionToAttributeValueChange(EPKM_Attr
 	FGameplayAttribute Attribute = GetAttributeByEnum(attribute, type);
 	if (Attribute.IsValid())
 	{
-		//Remove by attribute
-		if (AttributeValueChangeDelegates.Remove(Attribute, InDelegate) > 0)
+		FArrayFAttributeValueChangeDelegate* ArrayStruct = AttributeValueChangeDelegates.Find(Attribute);
+		if (ArrayStruct)
 		{
-			AfterRemoveAttributeValueChange(Attribute);
+			if (ArrayStruct->Delegates.Remove(InDelegate) > 0)
+			{
+				AfterRemoveAttributeValueChange(Attribute);
+
+				if (ArrayStruct->Delegates.Num() == 0)
+				{
+					AttributeValueChangeDelegates.Remove(Attribute);
+				}
+			}
 		}
 	}
 }
@@ -487,7 +503,11 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 {
 	bool atLeastOneRemoved = false;
 	TArray<FAttributeValueChangeDelegate> Delegates;
-	AttributeValueChangeDelegates.MultiFind(Data.Attribute, Delegates);
+	FArrayFAttributeValueChangeDelegate* ArrayStruct = AttributeValueChangeDelegates.Find(Data.Attribute);
+	if (ArrayStruct)
+	{
+		Delegates = ArrayStruct->Delegates;
+	}
 
 	TArray<FAttributeValueChangeDelegate> DelegatesTempToExecute;
 	TArray<float> newValues;
@@ -543,7 +563,11 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 	//We process the temp delegate array to check if if they are still valid since the execution of previous delegate
 	for (size_t i = 0; i < DelegatesTempToExecute.Num(); i++)
 	{
-		AttributeValueChangeDelegates.MultiFind(Data.Attribute, Delegates);
+		ArrayStruct = AttributeValueChangeDelegates.Find(Data.Attribute);
+		if (ArrayStruct)
+		{
+			Delegates = ArrayStruct->Delegates;
+		}
 
 		if (Delegates.Contains(DelegatesTempToExecute[i]))
 		{

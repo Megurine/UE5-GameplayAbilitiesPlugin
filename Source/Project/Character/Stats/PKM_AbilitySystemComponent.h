@@ -115,8 +115,28 @@ public:
 
 	friend inline uint32 GetTypeHash(const FRegisterGameplayTagEventStruct& MyStruct)
 	{
-		uint32 Hash = FCrc::MemCrc32(&MyStruct, sizeof(FRegisterGameplayTagEventStruct));
+		uint32 Hash = 0;
+		Hash = HashCombine(Hash, GetTypeHash(MyStruct.Tag));
+		Hash = HashCombine(Hash, GetTypeHash(MyStruct.eventType));
 		return Hash;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FArrayFAttributeValueChangeDelegate
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	UPROPERTY(EditAnywhere)
+	TArray<FAttributeValueChangeDelegate> Delegates = {};
+
+	FArrayFAttributeValueChangeDelegate() {}
+
+	FArrayFAttributeValueChangeDelegate(TArray<FAttributeValueChangeDelegate> _Delegates)
+	{
+		Delegates = _Delegates;
 	}
 };
 
@@ -233,16 +253,20 @@ public:
 	virtual void GenerateLastAttributeChangeDatas(AActor* Instigator) override;
 	virtual void GenerateLastAttributeChangeDatasWithSpec(const FGameplayEffectSpec& Spec) override;
 
-	UFUNCTION(BlueprintCallable)
+	/** Bind a BP function delegate to the ASC attribute events */
+	UFUNCTION(BlueprintCallable, Category = "Attributes")
 		void BindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate);
 
-	UFUNCTION(BlueprintCallable)
+	/** Unbind a BP function delegate to the ASC attribute events */
+	UFUNCTION(BlueprintCallable, Category = "Attributes")
 		void UnBindFunctionToAttributeValueChange(EPKM_Attributes attribute, EPKM_AttributesType type, FAttributeValueChangeDelegate InDelegate);
 
 private : 
 
-	TMultiMap<FGameplayAttribute, FAttributeValueChangeDelegate> AttributeValueChangeDelegates;
+	UPROPERTY()
+		TMap<FGameplayAttribute, FArrayFAttributeValueChangeDelegate> AttributeValueChangeDelegates;
 
+	/** Internaly remove the attribute delegate*/
 	void AfterRemoveAttributeValueChange(FGameplayAttribute Attribute);
 	void OnAttributeValueChange(const FOnAttributeChangeData& Data);
 
@@ -305,7 +329,7 @@ private :
 	TArray<FGameplayTagEventStruct> OnGameplayTagEventDelegates;
 	TMap<FRegisterGameplayTagEventStruct, FDelegateHandle> OnGameplayTagEventDelegateHandles;
 
-	/** Internaly remove the */
+	/** Internaly remove the tag delegate*/
 	void RemoveOnGameplayTagEventDelegateHandle(FGameplayTag Tag);
 
 	void OnGameplayTagEventNewOrRemoved(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation);

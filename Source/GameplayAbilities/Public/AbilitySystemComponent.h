@@ -1948,5 +1948,6 @@ public :
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 		TSubclassOf<UAttributeChangeDatasObject> AttributeChangeDatasObjectClass = UAttributeChangeDatasObject::StaticClass();
 
-	UAttributeChangeDatasObject* LastAttributeChangeDatasObject = nullptr;
+	UPROPERTY()
+		UAttributeChangeDatasObject* LastAttributeChangeDatasObject = nullptr;
 };
