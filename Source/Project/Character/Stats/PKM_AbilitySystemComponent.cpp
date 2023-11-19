@@ -489,6 +489,10 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 	TArray<FAttributeValueChangeDelegate> Delegates;
 	AttributeValueChangeDelegates.MultiFind(Data.Attribute, Delegates);
 
+	TArray<FAttributeValueChangeDelegate> DelegatesTempToExecute;
+	TArray<float> newValues;
+	TArray<float> oldValues;
+
 	for (size_t i = 0; i < Delegates.Num(); i++)
 	{
 		bool ValidBound = true;
@@ -515,7 +519,10 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 				}
 				if (newValue != oldValue) //Optimization - Maybe remove this condition ?
 				{
-					Delegates[i].Execute(newValue, oldValue, Data.ChangeDatas);
+					//UAttributeChangeDatasObject* aaa = NewObject<UAttributeChangeDatasObject>(this, UAttributeChangeDatasObject::StaticClass());
+					DelegatesTempToExecute.Add(Delegates[i]);
+					newValues.Add(newValue);
+					oldValues.Add(oldValue);
 				}
 			}
 		}
@@ -530,6 +537,17 @@ void UPKM_AbilitySystemComponent::OnAttributeValueChange(const FOnAttributeChang
 			Delegates.RemoveAt(i);
 			atLeastOneRemoved = true;
 			i--;
+		}
+	}
+
+	//We process the temp delegate array to check if if they are still valid since the execution of previous delegate
+	for (size_t i = 0; i < DelegatesTempToExecute.Num(); i++)
+	{
+		AttributeValueChangeDelegates.MultiFind(Data.Attribute, Delegates);
+
+		if (Delegates.Contains(DelegatesTempToExecute[i]))
+		{
+			DelegatesTempToExecute[i].Execute(newValues[i], oldValues[i], Data.ChangeDatas);
 		}
 	}
 
@@ -844,6 +862,7 @@ void UPKM_AbilitySystemComponent::OnGameplayTagEventAnyCountChange(const FGamepl
 
 void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation, EGameplayTagEventType::Type eventType)
 {
+	TArray<FGameplayTagEventStruct> OnGameplayTagEventDelegatesTempToExecute;
 	bool atLeastOneRemoved = false;
 	for (size_t i = 0; i < OnGameplayTagEventDelegates.Num(); i++)
 	{
@@ -876,7 +895,8 @@ void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag Callback
 					}
 					if (valid)
 					{
-						OnGameplayTagEventDelegates[i].Delegate.Execute(CallbackTag, (TagOperation == EOnGameplayEffectTagCountOperation::ADDED), NewCount, TriggerTag);
+						//We add delegate to a temp array because delegate can be removed due to an other delegate binding flow
+						OnGameplayTagEventDelegatesTempToExecute.Add(OnGameplayTagEventDelegates[i]);
 					}
 				}
 				/*else
@@ -898,6 +918,17 @@ void UPKM_AbilitySystemComponent::OnGameplayTagEvent(const FGameplayTag Callback
 			i--;
 		}
 	}
+
+	//We process the temp delegate array to check if they are still valid since the execution of previous delegate
+	for (size_t i = 0; i < OnGameplayTagEventDelegatesTempToExecute.Num(); i++)
+	{
+		if (OnGameplayTagEventDelegates.Contains(OnGameplayTagEventDelegatesTempToExecute[i]))
+		{
+			//UE_LOGFMT(LogTemp, Log, "MEGU Execute OnGameplayTagEvent to {o} for {t} from {f}", ("o", GetOwner()->GetName()), ("t", TriggerTag.ToString()), ("f", GetDebugStringUObject(OnGameplayTagEventDelegatesTempToExecute[i].Delegate.GetUObject())));
+			OnGameplayTagEventDelegatesTempToExecute[i].Delegate.Execute(CallbackTag, (TagOperation == EOnGameplayEffectTagCountOperation::ADDED), NewCount, TriggerTag);
+		}
+	}
+
 	if (atLeastOneRemoved)
 	{
 		RemoveOnGameplayTagEventDelegateHandle(CallbackTag);
@@ -928,6 +959,26 @@ bool UPKM_AbilitySystemComponent::CheckIsNotBoundedOnDeadWidget(UObject* ObjectB
 	}
 #endif
 	return true;
+}
+
+FString UPKM_AbilitySystemComponent::GetDebugStringUObject(UObject* object)
+{
+	if (object)
+	{
+		UActorComponent* actorComponent = Cast<UActorComponent>(object);
+		if (actorComponent)
+		{
+			return actorComponent->GetName() + " " + actorComponent->GetOwner()->GetName();
+		}
+		else
+		{
+			return object->GetName();
+		}
+	}
+	else
+	{
+		return "nullptr or ispendingkill";
+	}
 }
 
 void UPKM_AbilitySystemComponent::SetValueToOwnerMaterialInstances(const FName ParameterName, const FVector value)

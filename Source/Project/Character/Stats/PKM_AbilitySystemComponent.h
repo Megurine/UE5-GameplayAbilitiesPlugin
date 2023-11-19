@@ -63,6 +63,16 @@ public:
 		EventType = _EventType;
 		allowChildTag = _allowChildTag;
 	}
+
+	bool operator==(const FGameplayTagEventStruct& Other) const
+	{
+		return Delegate == Other.Delegate && Tag == Other.Tag && EventType == Other.EventType && allowChildTag == Other.allowChildTag;
+	}
+
+	bool operator!=(const FGameplayTagEventStruct& Other) const
+	{
+		return !(*this == Other);
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -293,6 +303,8 @@ private :
 	void OnGameplayTagEvent(const FGameplayTag CallbackTag, int32 NewCount, const FGameplayTag TriggerTag, EOnGameplayEffectTagCountOperation TagOperation, EGameplayTagEventType::Type eventType);
 
 	bool CheckIsNotBoundedOnDeadWidget(UObject* ObjectBound, bool CallForTag);
+
+	FString GetDebugStringUObject(UObject* object);
 
 #pragma endregion Tags
 
