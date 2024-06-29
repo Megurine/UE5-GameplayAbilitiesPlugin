@@ -1108,3 +1108,30 @@ void UPKM_AbilitySystemComponent::ComputeTimelineGameplayEffectCompColors()
 		}
 	}
 }
+
+bool UPKM_AbilitySystemComponent::SetGameplayEffectDurationHandle(FActiveGameplayEffectHandle Handle, float NewDuration)
+{
+	if (!Handle.IsValid())
+	{
+		return false;
+	}
+
+	FActiveGameplayEffect* AGE = const_cast<FActiveGameplayEffect*>(GetActiveGameplayEffect(Handle));
+	if (!AGE)
+		return false;
+
+	if (NewDuration > 0)
+	{
+		AGE->Spec.Duration = NewDuration;
+	}
+	else
+	{
+		AGE->Spec.Duration = 0.01f;
+	}
+	ActiveGameplayEffects.CheckDuration(Handle);
+
+	AGE->EventSet.OnTimeChanged.Broadcast(AGE->Handle, AGE->StartWorldTime, AGE->GetDuration());
+	OnGameplayEffectDurationChange(*AGE);
+
+	return true;
+}

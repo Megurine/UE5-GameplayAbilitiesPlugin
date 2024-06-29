@@ -357,6 +357,8 @@ public :
 
 	void ComputeTimelineGameplayEffectCompColors();
 
+	bool SetGameplayEffectDurationHandle(FActiveGameplayEffectHandle Handle, float NewDuration);
+
 	TArray<UPKM_TimelineGameplayEffectComp*> TimelineGameplayEffectCompColor;
 
 	int32 TimelineGameplayEffectCompColorCountCached = 0;
